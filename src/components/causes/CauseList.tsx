@@ -1,29 +1,37 @@
 "use client";
 
-import { CompleteCause } from "@/lib/db/schema/causes";
 import { trpc } from "@/lib/trpc/client";
 import CauseModal from "./CauseModal";
+import type { RouterOutput } from "@/lib/trpc/utils";
 
-export default function CauseList({ causes }: { causes: CompleteCause[] }) {
-  const { data: c } = trpc.causes.getCauses.useQuery(undefined, {
-    initialData: { causes },
+export default function CauseList({
+  causes,
+}: {
+  causes: RouterOutput["causes"]["getAllCauses"];
+}) {
+  const { data: c } = trpc.causes.getAllCauses.useQuery(undefined, {
+    initialData: causes,
     refetchOnMount: false,
   });
 
-  if (c.causes.length === 0) {
+  if (c.length === 0) {
     return <EmptyState />;
   }
 
   return (
     <ul>
-      {c.causes.map((cause) => (
+      {c.map((cause) => (
         <Cause cause={cause} key={cause.id} />
       ))}
     </ul>
   );
 }
 
-const Cause = ({ cause }: { cause: CompleteCause }) => {
+const Cause = ({
+  cause,
+}: {
+  cause: RouterOutput["causes"]["getAllCauses"][number];
+}) => {
   return (
     <li className="flex justify-between my-2">
       <div className="w-full">

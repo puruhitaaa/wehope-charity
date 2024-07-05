@@ -7,21 +7,21 @@ export const navLinks = [
   {
     id: 2,
     title: "Donations",
-    href: "#donations",
+    href: "/donations",
   },
   {
     id: 3,
     title: "Articles",
-    href: "#articles",
+    href: "/articles",
   },
   {
     id: 4,
     title: "About",
-    href: "#about",
+    href: "/about",
   },
   {
     id: 5,
     title: "Contact",
-    href: "#contact",
+    href: "/contact",
   },
 ];

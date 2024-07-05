@@ -1,11 +1,12 @@
 import * as z from "zod"
-import { CompleteCause, relatedCauseSchema } from "./index"
+import { CompleteCause, relatedCauseSchema, CompleteTransaction, relatedTransactionSchema } from "./index"
 
 export const donationSchema = z.object({
   id: z.string(),
   amount: z.number(),
   causeId: z.string().nullish(),
   userId: z.string(),
+  transactionId: z.string().nullish(),
   isAnonymous: z.boolean().nullish(),
   createdAt: z.date(),
   updatedAt: z.date(),
@@ -13,6 +14,7 @@ export const donationSchema = z.object({
 
 export interface CompleteDonation extends z.infer<typeof donationSchema> {
   cause?: CompleteCause | null
+  transaction?: CompleteTransaction | null
 }
 
 /**
@@ -22,4 +24,5 @@ export interface CompleteDonation extends z.infer<typeof donationSchema> {
  */
 export const relatedDonationSchema: z.ZodSchema<CompleteDonation> = z.lazy(() => donationSchema.extend({
   cause: relatedCauseSchema.nullish(),
+  transaction: relatedTransactionSchema.nullish(),
 }))

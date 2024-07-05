@@ -34,7 +34,7 @@ enum ApprovalStatus {
 }
 
 model Media {
-  id            String       @id @default(cuid())
+  key           String       @unique
   url           String
   type          MediaType
   userId        String?
@@ -147,8 +147,17 @@ model Cause {
   donations    Donation[]
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
+  bookmarks    Bookmark[]
 
   @@index([createdAt, isForwarded, isPublished])
+}
+
+model Bookmark {
+  causeId   String   @unique
+  cause     Cause    @relation(fields: [causeId], references: [id], onDelete: Cascade)
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Article {
@@ -170,8 +179,8 @@ model Article {
 
 model Certificate {
   id          String     @id @default(cuid())
-  documentId  String     @unique
-  document    Media      @relation(fields: [documentId], references: [id])
+  documentKey String     @unique
+  document    Media      @relation(fields: [documentKey], references: [key])
   volunteerId String?
   volunteer   Volunteer? @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
   createdAt   DateTime   @default(now())
@@ -192,15 +201,25 @@ model Volunteer {
   @@index([createdAt])
 }
 
+model Transaction {
+  paymentId  String    @unique
+  donationId String?   @unique
+  donation   Donation? @relation(fields: [donationId], references: [id])
+
+  @@index(paymentId)
+}
+
 model Donation {
-  id          String   @id @default(cuid())
-  amount      Float
-  causeId     String?
-  cause       Cause?   @relation(fields: [causeId], references: [id])
-  userId      String
-  isAnonymous Boolean? @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String       @id @default(cuid())
+  amount        Float
+  causeId       String?
+  cause         Cause?       @relation(fields: [causeId], references: [id])
+  userId        String
+  transactionId String?
+  transaction   Transaction?
+  isAnonymous   Boolean?     @default(false)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
   @@index([createdAt, amount])
 }

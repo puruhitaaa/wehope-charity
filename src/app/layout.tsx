@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   description: "A web portal to help others who are in need.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;

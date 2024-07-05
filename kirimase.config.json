@@ -1,18 +1,11 @@
 {
   "hasSrc": true,
-  "packages": [
-    "shadcn-ui",
-    "prisma",
-    "clerk",
-    "trpc",
-    "resend"
-  ],
+  "packages": ["prisma", "clerk", "trpc", "resend"],
   "preferredPackageManager": "bun",
   "t3": false,
   "alias": "@",
   "analytics": true,
   "rootPath": "src/",
-  "componentLib": "shadcn-ui",
   "orm": "prisma",
   "driver": "pg",
   "auth": "clerk"

@@ -1,33 +1,36 @@
 import { SidebarLink } from "@/components/SidebarItems";
-import { Cog, Globe, HomeIcon } from "lucide-react";
+import { Cog, HomeIcon, Leaf, List, UserCog } from "lucide-react";
 
 type AdditionalLinks = {
   title: string;
   links: SidebarLink[];
 };
 
+export const defaultManageLinks: SidebarLink[] = [
+  { href: "/manage/account", title: "Account", icon: Cog },
+  { href: "/manage/settings", title: "Settings", icon: Cog },
+];
+
 export const defaultLinks: SidebarLink[] = [
-  { href: "/dashboard", title: "Home", icon: HomeIcon },
   { href: "/account", title: "Account", icon: Cog },
-  { href: "/settings", title: "Settings", icon: Cog },
+  { href: "/settings", title: "Settings", icon: UserCog },
 ];
 
 export const additionalLinks: AdditionalLinks[] = [
   {
-    title: "Entities",
+    title: "Manage",
     links: [
+      { href: "/manage/dashboard", title: "Dashboard", icon: HomeIcon },
       {
-        href: "/causes",
-        title: "Causes",
-        icon: Globe,
+        href: "/manage/categories",
+        title: "Categories",
+        icon: List,
       },
       {
-        href: "/categories",
-        title: "Categories",
-        icon: Globe,
+        href: "/manage/causes",
+        title: "Causes",
+        icon: Leaf,
       },
     ],
   },
-
 ];
-

@@ -53,6 +53,7 @@ async function main() {
   // Media
   const media1 = await prisma.media.create({
     data: {
+      key: "1234567",
       url: "https://example.com/image1.jpg",
       type: MediaType.IMAGE,
       causeId: cause1.id,
@@ -61,6 +62,7 @@ async function main() {
 
   const media2 = await prisma.media.create({
     data: {
+      key: "123456",
       url: "https://example.com/image2.jpg",
       type: MediaType.IMAGE,
       causeId: cause2.id,
@@ -194,6 +196,7 @@ async function main() {
 
   await prisma.media.create({
     data: {
+      key: "1234566",
       url: "https://example.com/image1.jpg",
       type: MediaType.IMAGE,
       articleId: article1.id,
@@ -202,6 +205,7 @@ async function main() {
 
   await prisma.media.create({
     data: {
+      key: "1234577",
       url: "https://example.com/image2.jpg",
       type: MediaType.IMAGE,
       articleId: article2.id,
@@ -226,14 +230,14 @@ async function main() {
   // Certificate
   const certificate1 = await prisma.certificate.create({
     data: {
-      documentId: media1.id,
+      documentKey: media1.key,
       volunteerId: volunteer1.id,
     },
   });
 
   const certificate2 = await prisma.certificate.create({
     data: {
-      documentId: media2.id,
+      documentKey: media2.key,
       volunteerId: volunteer2.id,
     },
   });

@@ -18,6 +18,10 @@ export type AuthSession = {
       id: string;
       name?: string;
       email?: string;
+      imageUrl?: string;
+      metadata?: {
+        role: string;
+      };
     };
   } | null;
 };
@@ -32,6 +36,10 @@ export const getUserAuth = async () => {
           id: userId,
           name: renderName(sessionClaims),
           email: sessionClaims?.email,
+          imageUrl: sessionClaims?.imageUrl,
+          metadata: {
+            role: sessionClaims?.metadata.role,
+          },
         },
       },
     } as AuthSession;

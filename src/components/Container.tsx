@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { ny } from "@/lib/utils";
 
 function Container({
   children,
@@ -6,7 +6,7 @@ function Container({
   ...rest
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn("mx-auto container", className)} {...rest}>
+    <div className={ny("mx-auto container", className)} {...rest}>
       {children}
     </div>
   );

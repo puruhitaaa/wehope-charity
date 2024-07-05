@@ -5,8 +5,8 @@ import { usePathname } from "next/navigation";
 
 import { LucideIcon } from "lucide-react";
 
-import { cn } from "@/lib/utils";
-import { defaultLinks, additionalLinks } from "@/config/nav";
+import { ny } from "@/lib/utils";
+import { defaultManageLinks, additionalLinks } from "@/config/nav";
 
 export interface SidebarLink {
   title: string;
@@ -17,7 +17,7 @@ export interface SidebarLink {
 const SidebarItems = () => {
   return (
     <>
-      <SidebarLinkGroup links={defaultLinks} />
+      <SidebarLinkGroup links={defaultManageLinks} />
       {additionalLinks.length > 0
         ? additionalLinks.map((l) => (
             <SidebarLinkGroup
@@ -43,7 +43,8 @@ const SidebarLinkGroup = ({
   border?: boolean;
 }) => {
   const fullPathname = usePathname();
-  const pathname = "/" + fullPathname.split("/")[1];
+  const splitPath = fullPathname.split("/");
+  const pathname = "/" + splitPath[splitPath.length === 3 ? 2 : 1];
 
   return (
     <div className={border ? "border-border border-t my-8 pt-4" : ""}>
@@ -55,7 +56,13 @@ const SidebarLinkGroup = ({
       <ul>
         {links.map((link) => (
           <li key={link.title}>
-            <SidebarLink link={link} active={pathname === link.href} />
+            <SidebarLink
+              link={link}
+              active={
+                pathname ===
+                "/" + link.href.split("/")[splitPath.length === 3 ? 2 : 1]
+              }
+            />
           </li>
         ))}
       </ul>
@@ -78,9 +85,9 @@ const SidebarLink = ({
     >
       <div className="flex items-center">
         <div
-          className={cn(
+          className={ny(
             "opacity-0 left-0 h-6 w-[4px] absolute rounded-r-lg bg-primary",
-            active ? "opacity-100" : "",
+            active ? "opacity-100" : ""
           )}
         />
         <link.icon className="h-3.5 mr-1" />

@@ -3,7 +3,7 @@ import { MediaType } from "@prisma/client"
 import { CompleteCause, relatedCauseSchema, CompleteApproval, relatedApprovalSchema, CompleteCertificate, relatedCertificateSchema, CompleteArticle, relatedArticleSchema } from "./index"
 
 export const mediaSchema = z.object({
-  id: z.string(),
+  key: z.string(),
   url: z.string(),
   type: z.nativeEnum(MediaType),
   userId: z.string().nullish(),

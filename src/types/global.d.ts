@@ -9,6 +9,7 @@ declare global {
     fullName?: string;
     username?: string;
     email?: string;
+    imageUrl?: string;
     metadata: {
       role?: Roles;
     };

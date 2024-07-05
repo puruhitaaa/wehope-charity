@@ -10,13 +10,13 @@ import {
   DialogTrigger,
 } from "../ui/dialog";
 import CauseForm from "./CauseForm";
-import { Cause } from "@/lib/db/schema/causes";
+import type { RouterOutput } from "@/lib/trpc/utils";
 
 export default function CauseModal({
   cause,
   emptyState,
 }: {
-  cause?: Cause;
+  cause?: RouterOutput["causes"]["getAllCauses"][number];
   emptyState?: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -54,7 +54,7 @@ export default function CauseModal({
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-h-[80vh] overflow-y-auto">
         <DialogHeader className="px-5 pt-5">
           <DialogTitle>{editing ? "Edit" : "Create"} Cause</DialogTitle>
         </DialogHeader>

@@ -3,7 +3,7 @@ import { CompleteMedia, relatedMediaSchema, CompleteVolunteer, relatedVolunteerS
 
 export const certificateSchema = z.object({
   id: z.string(),
-  documentId: z.string(),
+  documentKey: z.string(),
   volunteerId: z.string().nullish(),
   createdAt: z.date(),
   updatedAt: z.date(),
