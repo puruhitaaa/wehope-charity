@@ -207,7 +207,7 @@ function Header({ session }: THeaderProps) {
                     ) : null}
 
                     <div className="py-2">
-                      <SignOutButton>
+                      <SignOutButton redirectUrl={pathname}>
                         <Button className="w-full" variant="destructive">
                           Sign Out
                         </Button>

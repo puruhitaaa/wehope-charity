@@ -4,6 +4,8 @@ import { causesRouter } from "./causes";
 import { mediaRouter } from "./media";
 import { articlesRouter } from "./articles";
 import { bookmarkRouter } from "./bookmarks";
+import { commentsRouter } from "./comments";
+import { likesRouter } from "./likes";
 
 export const appRouter = router({
   categories: categoriesRouter,
@@ -11,6 +13,8 @@ export const appRouter = router({
   media: mediaRouter,
   articles: articlesRouter,
   bookmarks: bookmarkRouter,
+  comments: commentsRouter,
+  likes: likesRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -203,7 +203,9 @@ function Donations() {
           next={handleFetchNextPage}
           threshold={1}
         >
-          {hasNextPage && <Loader2 className="my-4 h-8 w-8 animate-spin" />}
+          {hasNextPage && (
+            <Loader2 className="my-4 h-8 w-8 animate-spin bg-foreground" />
+          )}
         </InfiniteScroll>
       </div>
     </div>
