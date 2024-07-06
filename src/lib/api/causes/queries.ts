@@ -194,7 +194,10 @@ export const getCauseById = async (id: CauseId) => {
       description: true,
       targetAmount: true,
       createdAt: true,
-      media: { select: { key: true, url: true } },
+      media: {
+        select: { key: true, url: true },
+        orderBy: { createdAt: "asc" },
+      },
       category: { select: { id: true, name: true } },
     },
   });

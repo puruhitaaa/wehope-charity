@@ -5,7 +5,7 @@ import { Progress } from "../ui/progress";
 import { currencyFormat, ny } from "@/lib/utils";
 import { Button } from "../ui/button";
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Badge } from "../ui/badge";
 import { Skeleton } from "../ui/skeleton";
 import { formatDistance } from "date-fns";
@@ -19,6 +19,15 @@ import {
   TooltipTrigger,
 } from "../ui/tooltip";
 import LikeButton from "../comments/LikeButton";
+import {
+  Carousel,
+  type CarouselApi,
+  CarouselContent,
+  CarouselDots,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "../ui/carousel";
 
 type TDonationDetailProps = {
   id: string;
@@ -26,6 +35,10 @@ type TDonationDetailProps = {
 
 function DonationDetail({ id }: TDonationDetailProps) {
   const [isTruncated, setIsTruncated] = useState(true);
+  const [api, setApi] = useState<CarouselApi>();
+  const [current, setCurrent] = useState(0);
+  const [count, setCount] = useState(0);
+
   const [page, setPage] = useState(0);
   const { data: cause, isLoading: isLoadingCause } =
     trpc.causes.getCauseById.useQuery({ id });
@@ -51,19 +64,49 @@ function DonationDetail({ id }: TDonationDetailProps) {
     setPage((prev) => prev + 1);
   };
 
+  useEffect(() => {
+    if (!api) return;
+
+    setCount(api.scrollSnapList().length);
+    setCurrent(api.selectedScrollSnap() + 1);
+
+    api.on("select", () => {
+      setCurrent(api.selectedScrollSnap() + 1);
+    });
+  }, [api]);
+
   return (
     <>
       <div className="gap-3 flex flex-col lg:sticky lg:top-0">
         {!isLoadingCause ? (
           cause ? (
-            <div className="h-96 w-auto relative">
-              <Image
-                alt={cause?.id}
-                src={cause?.media[0].url}
-                className="object-cover rounded-lg h-full w-full"
-                fill
-              />
-            </div>
+            <Carousel
+              setApi={setApi}
+              className="w-full relative"
+              dotsPosition="bottom"
+            >
+              <CarouselContent>
+                {cause.media.map((_, index) => (
+                  <CarouselItem key={index}>
+                    <div className="h-96 w-auto relative">
+                      <Image
+                        alt={cause.id}
+                        src={cause.media[index].url}
+                        className="object-cover rounded-lg h-full w-full"
+                        fill
+                      />
+                    </div>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              <CarouselDots className="absolute bottom-0" size="sm" />
+              {current !== 1 ? (
+                <CarouselPrevious className="absolute left-0 inset-y-0 my-auto ml-4" />
+              ) : null}
+              {current < count ? (
+                <CarouselNext className="absolute right-0 inset-y-0 my-auto mr-4" />
+              ) : null}
+            </Carousel>
           ) : null
         ) : (
           <Skeleton className="h-96 w-auto" />
