@@ -159,7 +159,7 @@ function CauseItem({ cause }: TCauseItemProps) {
   return (
     <div className="rounded-xl shadow dark:shadow-none p-4 md:p-6 flex flex-col gap-1.5 lg:gap-3 group">
       <div className="w-auto h-96 relative group overflow-hidden rounded-xl">
-        <div className="absolute top-0 flex w-full lg:items-center lg:justify-between z-20">
+        <div className="absolute top-0 flex w-full items-center justify-between z-20">
           {pathname === "/" ? (
             <button
               className="from-background px-4 py-1 rounded-full to-background/30 bg-gradient-to-r m-4 text-foreground font-semibold border border-background group-hover:bg-background transition-colors text-sm"
