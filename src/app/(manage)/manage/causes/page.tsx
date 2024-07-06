@@ -2,6 +2,8 @@ import CauseList from "@/components/causes/CauseList";
 import NewCauseModal from "@/components/causes/CauseModal";
 import { api } from "@/lib/trpc/api";
 
+export const dynamic = "force-dynamic";
+
 export default async function Causes() {
   const causes = await api.causes.getAllCauses.query();
 

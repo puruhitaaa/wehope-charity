@@ -119,6 +119,7 @@ export const getCauses = async ({
     ],
     where: {
       categoryId: categoryId ? categoryId : undefined,
+      isPublished: true,
     },
   });
 

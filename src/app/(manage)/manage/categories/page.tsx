@@ -2,6 +2,8 @@ import CategoryList from "@/components/categories/CategoryList";
 import NewCategoryModal from "@/components/categories/CategoryModal";
 import { api } from "@/lib/trpc/api";
 
+export const dynamic = "force-dynamic";
+
 export default async function Categories() {
   const categories = await api.categories.getCategories.query();
 
