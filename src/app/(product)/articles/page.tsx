@@ -1,6 +1,8 @@
 import Container from "@/components/Container";
 import ArticlesComponent from "@/components/articles/ArticlesComponent";
 
+export const dynamic = "force-dynamic";
+
 function Articles() {
   return (
     <main>

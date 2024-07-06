@@ -1,6 +1,8 @@
 import Container from "@/components/Container";
 import BookmarksComponent from "@/components/bookmarks/Bookmarks";
 
+export const dynamic = "force-dynamic";
+
 function Bookmarks() {
   return (
     <main>

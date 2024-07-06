@@ -13,6 +13,8 @@ import { values } from "@/static/landing";
 import Causes from "@/components/causes/Causes";
 import Articles from "@/components/articles/Articles";
 
+export const dynamic = "force-dynamic";
+
 export default function LandingPage() {
   return (
     <>

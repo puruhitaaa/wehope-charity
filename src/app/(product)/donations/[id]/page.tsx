@@ -1,6 +1,8 @@
 import Container from "@/components/Container";
 import DonationDetailComponent from "@/components/donations/DonationDetail";
 
+export const dynamic = "force-dynamic";
+
 function DonationDetail({ params }: { params: { id: string } }) {
   return (
     <main>
