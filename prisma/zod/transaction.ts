@@ -2,8 +2,9 @@ import * as z from "zod"
 import { CompleteDonation, relatedDonationSchema } from "./index"
 
 export const transactionSchema = z.object({
-  paymentId: z.string(),
+  id: z.string(),
   donationId: z.string().nullish(),
+  isSuccess: z.boolean().nullish(),
 })
 
 export interface CompleteTransaction extends z.infer<typeof transactionSchema> {

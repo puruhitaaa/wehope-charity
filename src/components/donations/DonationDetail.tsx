@@ -28,6 +28,7 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "../ui/carousel";
+import { useSearchParamsUtil } from "@/hooks/use-search-params";
 
 type TDonationDetailProps = {
   id: string;
@@ -38,6 +39,7 @@ function DonationDetail({ id }: TDonationDetailProps) {
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
   const [count, setCount] = useState(0);
+  const { pushToRoute } = useSearchParamsUtil();
 
   const [page, setPage] = useState(0);
   const { data: cause, isLoading: isLoadingCause } =
@@ -62,6 +64,10 @@ function DonationDetail({ id }: TDonationDetailProps) {
   const handleFetchNextPage = () => {
     fetchNextPage();
     setPage((prev) => prev + 1);
+  };
+
+  const handleBadgeClick = (catId: string) => {
+    pushToRoute("/donations", "categoryId", catId);
   };
 
   useEffect(() => {
@@ -127,7 +133,7 @@ function DonationDetail({ id }: TDonationDetailProps) {
                     truncate: isTruncated,
                   })}
                 >
-                  {cause?.description}
+                  {cause.description}
                 </p>
                 {isTruncated ? (
                   <button
@@ -139,7 +145,12 @@ function DonationDetail({ id }: TDonationDetailProps) {
                 ) : null}
               </div>
               {!isTruncated ? (
-                <Badge className="w-fit">{cause?.category.name}</Badge>
+                <Badge
+                  className="w-fit cursor-pointer"
+                  onClick={() => handleBadgeClick(cause.category.id)}
+                >
+                  {cause.category.name}
+                </Badge>
               ) : null}
               {!isTruncated ? (
                 <button
@@ -164,7 +175,7 @@ function DonationDetail({ id }: TDonationDetailProps) {
         )}
 
         <div className="flex flex-col 2xl:items-center 2xl:flex-row 2xl:justify-between 2xl:gap-3 gap-1.5">
-          <div>
+          <div className="flex flex-col gap-1.5 w-full">
             {!isLoadingCause ? (
               cause ? (
                 <>
@@ -172,25 +183,30 @@ function DonationDetail({ id }: TDonationDetailProps) {
                 </>
               ) : null
             ) : (
-              <Skeleton className="h-5 w-full" />
+              <Skeleton className="h-5 w-40" />
             )}
-            {!isLoadingCause ? (
-              cause ? (
-                <div className="flex sm:items-center flex-col sm:flex-row gap-1.5">
-                  <span className="flex items-center gap-1.5">
-                    <p className="font-semibold text-primary truncate">
-                      {currencyFormat(cause.donationSum)}
+            <div className="flex sm:items-center flex-col sm:flex-row gap-1.5">
+              {!isLoadingCause ? (
+                cause ? (
+                  <>
+                    <span className="flex items-center gap-1.5">
+                      <p className="font-semibold text-primary truncate">
+                        {currencyFormat(cause.donationSum)}
+                      </p>
+                      /
+                    </span>
+                    <p className="font-semibold truncate">
+                      {currencyFormat(cause.targetAmount)}
                     </p>
-                    /
-                  </span>
-                  <p className="font-semibold truncate">
-                    {currencyFormat(cause.targetAmount)}
-                  </p>
-                </div>
-              ) : null
-            ) : (
-              <Skeleton className="h-6 w-full" />
-            )}
+                  </>
+                ) : null
+              ) : (
+                <>
+                  <Skeleton className="h-6 w-52 sm:w-full" />
+                  <Skeleton className="h-6 w-52 sm:hidden" />
+                </>
+              )}
+            </div>
           </div>
 
           {!isLoadingCause ? (
@@ -208,7 +224,7 @@ function DonationDetail({ id }: TDonationDetailProps) {
               </TooltipProvider>
             ) : null
           ) : (
-            <Skeleton className="w-20 h-10" />
+            <Skeleton className="sm:w-20 w-full h-10" />
           )}
         </div>
       </div>

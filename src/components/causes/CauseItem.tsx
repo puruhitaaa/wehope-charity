@@ -11,6 +11,42 @@ import { SignInButton, useSession } from "@clerk/nextjs";
 import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
 import Link from "next/link";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "../ui/dialog";
+import { Input } from "../ui/input";
+import { Switch } from "../ui/switch";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "../ui/alert-dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  clientDonationParams,
+  NewClientDonationParams,
+} from "@/lib/db/schema/donations";
+import { useEffect, useState } from "react";
 
 type TCauseItemProps = {
   cause:
@@ -129,11 +165,11 @@ function BookmarkButton({
             { causeId: cause.id, isBookmarked: cause.isBookmarked },
             {
               onSuccess: () => {
-                if (!cause.isBookmarked) {
-                  toast.success("Added a cause to bookmarks");
-                } else {
-                  toast.error("Removed a cause from bookmarks");
-                }
+                toast.success(
+                  `${!cause.isBookmarked ? "Added" : "Removed"} a cause ${
+                    !cause.isBookmarked ? "to" : "from"
+                  } bookmarks`
+                );
               },
               onError: () => toast.error("Something went wrong."),
             }
@@ -144,6 +180,205 @@ function BookmarkButton({
       return (
         <SignInButton mode="modal">
           {renderButton({ onClick: undefined })}
+        </SignInButton>
+      );
+    default:
+      return null;
+  }
+}
+
+export function DonateButton({
+  cause,
+  loggedIn,
+}: TCauseItemProps & { loggedIn: boolean }) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const {
+    mutate: createTransactionToken,
+    isLoading: isCreatingTransactionToken,
+  } = trpc.midtrans.createTransaction.useMutation();
+  const { mutate: createDonation } =
+    trpc.donations.createDonation.useMutation();
+  const form = useForm<NewClientDonationParams>({
+    resolver: zodResolver(clientDonationParams),
+    defaultValues: {
+      amount: 1000,
+      isAnonymous: false,
+    },
+  });
+  const handleSubmit = (values: NewClientDonationParams) => {
+    createTransactionToken(values, {
+      onError: () => toast.error("Something went wrong."),
+      onSuccess: (res) => {
+        toast.success("Successfully created a transaction token.");
+        setIsModalOpen(false);
+        window.snap.pay(res, {
+          onSuccess: (result: { transaction_id: string }) => {
+            createDonation({
+              ...values,
+              causeId: cause.id,
+              transactionId: result.transaction_id,
+            });
+            toast.success("Transaction has been completed. Thank you!");
+          },
+          onError: () => {
+            toast.error("Something went wrong confirming the transaction.");
+          },
+        });
+      },
+    });
+  };
+
+  const amount = form.watch("amount");
+  const isAnonymous = form.watch("isAnonymous");
+
+  useEffect(() => {
+    const snapSrcUrl = "https://app.sandbox.midtrans.com/snap/snap.js";
+
+    const script = document.createElement("script");
+    script.src = snapSrcUrl;
+    script.setAttribute(
+      "data-client-key",
+      process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY as string
+    );
+    script.async = true;
+
+    document.body.appendChild(script);
+
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
+
+  switch (loggedIn) {
+    case true:
+      return (
+        <Dialog onOpenChange={setIsModalOpen} open={isModalOpen}>
+          <DialogTrigger asChild>
+            <Button
+              type="button"
+              disabled={cause.donationSum >= cause.targetAmount}
+            >
+              Donate
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px] divide-y divide-muted-foreground">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-bold">
+                Support Our Cause
+              </DialogTitle>
+              <DialogDescription className="text-muted-foreground">
+                Your donation will be forwarded to{" "}
+                <span className="font-semibold">{cause.title}</span> cause. When
+                the cause reaches its target, we will notify you.
+              </DialogDescription>
+            </DialogHeader>
+            <Form {...form}>
+              <form
+                onSubmit={form.handleSubmit(handleSubmit)}
+                className="space-y-4 py-3"
+                id="client-donation-form"
+              >
+                <FormField
+                  control={form.control}
+                  name="isAnonymous"
+                  render={({ field }) => (
+                    <FormItem className="grid grid-cols-1 lg:grid-cols-2 items-center gap-2">
+                      <FormLabel>Anonymous Donation?</FormLabel>
+                      <FormControl>
+                        <Switch
+                          checked={!!field.value}
+                          name={field.name}
+                          onClick={() =>
+                            void form.setValue("isAnonymous", !field.value)
+                          }
+                          disabled={field.disabled}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                {isAnonymous ? (
+                  <p className="text-muted-foreground text-sm">
+                    Your donation will not be visible to the public.
+                  </p>
+                ) : null}
+                <FormField
+                  control={form.control}
+                  name="amount"
+                  render={({ field }) => (
+                    <FormItem className="grid gap-2">
+                      <FormLabel>Donation Amount</FormLabel>
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground">Rp</span>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            min={1000}
+                            type="number"
+                            onChange={(e) => field.onChange(+e.target.value)}
+                            placeholder="Enter amount"
+                          />
+                        </FormControl>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      className="w-full"
+                      type="button"
+                      disabled={
+                        !form.formState.isValid || !form.formState.isDirty
+                      }
+                    >
+                      Donate Now
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        Are you absolutely sure?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        You will donate{" "}
+                        <span className="font-semibold">
+                          {currencyFormat(amount)}
+                        </span>{" "}
+                        to the cause. Your donation{" "}
+                        <span className="font-semibold">
+                          will {isAnonymous ? "not" : null}
+                        </span>{" "}
+                        be visible to the public.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        className={buttonVariants({
+                          className: "bg-green-600 hover:bg-green-500",
+                        })}
+                        form="client-donation-form"
+                        type="submit"
+                        disabled={isCreatingTransactionToken}
+                      >
+                        Continue
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
+      );
+    case false:
+      return (
+        <SignInButton mode="modal">
+          <Button disabled={cause.donationSum >= cause.targetAmount}>
+            Donate
+          </Button>
         </SignInButton>
       );
     default:
@@ -209,7 +444,7 @@ function CauseItem({ cause }: TCauseItemProps) {
           </div>
         </div>
 
-        <Button>Donate</Button>
+        {isLoaded ? <DonateButton cause={cause} loggedIn={isSignedIn} /> : null}
       </div>
     </div>
   );

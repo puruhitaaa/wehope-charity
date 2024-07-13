@@ -106,12 +106,13 @@ model Approval {
 }
 
 model Like {
-  userId    String   @unique
-  commentId String?
-  comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  userId    String
+  commentId String
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([userId, commentId])
   @@index([createdAt])
 }
 
@@ -202,11 +203,12 @@ model Volunteer {
 }
 
 model Transaction {
-  paymentId  String    @unique
+  id         String    @unique
   donationId String?   @unique
   donation   Donation? @relation(fields: [donationId], references: [id])
+  isSuccess  Boolean?  @default(false)
 
-  @@index(paymentId)
+  @@index(id)
 }
 
 model Donation {

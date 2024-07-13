@@ -12,10 +12,13 @@ import Link from "next/link";
 import { values } from "@/static/landing";
 import Causes from "@/components/causes/Causes";
 import Articles from "@/components/articles/Articles";
+import { auth } from "@clerk/nextjs/server";
 
 export const dynamic = "force-dynamic";
 
 export default function LandingPage() {
+  const { userId } = auth();
+
   return (
     <>
       <main className="scroll-smooth">
@@ -28,7 +31,7 @@ export default function LandingPage() {
               </h1>
 
               <div className="flex flex-col gap-6">
-                <p className="text-muted-foreground">
+                <p className="text-muted-foreground text-justify lg:text-start">
                   Be a prideful part of something really great. We are utterly
                   dedicated to giving hope to those in need, creating a lasting
                   impact for them. Donate, Volunteer, and Spread awareness to
@@ -40,7 +43,7 @@ export default function LandingPage() {
                     Donate Now
                   </Link>
                   <Link
-                    href="#description"
+                    href={userId ? "#description" : "/get-started"}
                     className={buttonVariants({ variant: "link" })}
                   >
                     Learn More

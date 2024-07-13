@@ -31,6 +31,9 @@ export const getRecentCauses = async () => {
       amount: true,
     },
     where: {
+      transaction: {
+        isSuccess: true,
+      },
       causeId: {
         in: c.map((cause) => cause.id),
       },
@@ -81,7 +84,10 @@ export const getAllCauses = async () => {
       title: true,
       description: true,
       createdAt: true,
-      media: { select: { key: true, url: true } },
+      media: {
+        select: { key: true, url: true },
+        orderBy: { createdAt: "asc" },
+      },
       category: { select: { id: true, name: true } },
     },
     orderBy: { createdAt: "desc" },
@@ -108,7 +114,10 @@ export const getCauses = async ({
       description: true,
       targetAmount: true,
       createdAt: true,
-      media: { select: { key: true, url: true } },
+      media: {
+        select: { key: true, url: true },
+        orderBy: { createdAt: "asc" },
+      },
       category: { select: { id: true, name: true } },
     },
     orderBy: [
@@ -129,6 +138,9 @@ export const getCauses = async ({
       amount: true,
     },
     where: {
+      transaction: {
+        isSuccess: true,
+      },
       causeId: {
         in: c.map((cause) => cause.id),
       },

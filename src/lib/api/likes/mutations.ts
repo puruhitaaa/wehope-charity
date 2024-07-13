@@ -8,7 +8,9 @@ export const toggleLike = async (like: NewLikeParams) => {
       await db.like.create({ data: newLike });
     } else {
       await db.like.delete({
-        where: { commentId: like.commentId!, userId: like.userId },
+        where: {
+          userId_commentId: { commentId: like.commentId!, userId: like.userId },
+        },
       });
     }
   } catch (err) {

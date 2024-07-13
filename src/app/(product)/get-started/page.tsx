@@ -1,3 +1,4 @@
+import { SignInButton, SignUpButton } from "@clerk/nextjs";
 import { auth } from "@clerk/nextjs/server";
 import Image from "next/image";
 import Link from "next/link";
@@ -25,18 +26,16 @@ function GetStarted() {
                 </p>
               </div>
               <div className="flex flex-col gap-2 min-[400px]:flex-row">
-                <Link
-                  href="/sign-in"
-                  className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-8 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
-                >
-                  Sign In
-                </Link>
-                <Link
-                  href="/sign-up"
-                  className="inline-flex h-10 items-center justify-center rounded-md border border-input bg-background px-8 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
-                >
-                  Sign Up
-                </Link>
+                <SignInButton mode="modal" forceRedirectUrl="/">
+                  <button className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-8 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50">
+                    Sign In
+                  </button>
+                </SignInButton>
+                <SignUpButton mode="modal" forceRedirectUrl="/">
+                  <button className="inline-flex h-10 items-center justify-center rounded-md border border-input bg-background px-8 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50">
+                    Sign Up
+                  </button>
+                </SignUpButton>
               </div>
             </div>
 
@@ -45,7 +44,7 @@ function GetStarted() {
               width={500}
               height={500}
               alt="Hero"
-              className="mx-auto aspect-video overflow-hidden rounded-xl object-cover object-bottom h-[48rem] sm:w-full"
+              className="mx-auto aspect-video overflow-hidden rounded-xl object-cover object-bottom h-96 lg:h-[48rem] sm:w-full"
             />
           </div>
         </div>
