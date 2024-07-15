@@ -46,19 +46,23 @@ import {
   clientDonationParams,
   NewClientDonationParams,
 } from "@/lib/db/schema/donations";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 
 type TCauseItemProps = {
   cause:
     | RouterOutput["causes"]["getRecentCauses"][number]
     | RouterOutput["causes"]["getCauses"]["causes"][number]
+    | RouterOutput["causes"]["getCauseById"]
     | RouterOutput["bookmarks"]["getBookmarks"]["bookmarks"][number]["cause"];
 };
 
-function BookmarkButton({
+export function BookmarkButton({
+  className,
   cause,
   loggedIn,
-}: TCauseItemProps & { loggedIn: boolean }) {
+}: TCauseItemProps & {
+  loggedIn: boolean;
+} & React.HTMLAttributes<HTMLButtonElement>) {
   const utils = trpc.useUtils();
   const pathname = usePathname();
   const { mutate: addToBookmark, isLoading: isAddingToBookmark } =
@@ -77,6 +81,21 @@ function BookmarkButton({
 
               return c;
             });
+          });
+        } else if (
+          pathname.trim().toLowerCase().startsWith("/donations") &&
+          pathname.trim().toLowerCase() !== "/donations"
+        ) {
+          await utils.causes.getCauseById.cancel({ id: cause.id });
+          utils.causes.getCauseById.setData({ id: cause.id }, (old) => {
+            if (old === undefined) {
+              return;
+            }
+
+            return {
+              ...old,
+              isBookmarked: !cause.isBookmarked,
+            };
           });
         } else if (pathname.trim().toLowerCase() === "/donations") {
           await utils.causes.getCauses.cancel();
@@ -145,7 +164,10 @@ function BookmarkButton({
     return (
       <button
         disabled={!!isAddingToBookmark}
-        className="m-4 rounded-full border p-2 group-hover:bg-background text-primary to-background/30 from-background border-background bg-gradient-to-r transition-colors"
+        className={ny(
+          "m-4 rounded-full border p-2 group-hover:bg-background text-primary to-background/30 from-background border-background bg-gradient-to-r transition-colors",
+          className
+        )}
         onClick={onClick}
       >
         <Bookmark
@@ -187,10 +209,10 @@ function BookmarkButton({
   }
 }
 
-export function DonateButton({
+export const DonateButton = ({
   cause,
   loggedIn,
-}: TCauseItemProps & { loggedIn: boolean }) {
+}: TCauseItemProps & { loggedIn: boolean }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const {
     mutate: createTransactionToken,
@@ -384,7 +406,7 @@ export function DonateButton({
     default:
       return null;
   }
-}
+};
 
 function CauseItem({ cause }: TCauseItemProps) {
   const { pushToRoute } = useSearchParamsUtil();

@@ -10,6 +10,9 @@ export const insertCommentSchema = baseSchema.omit({ id: true });
 export const insertCommentParams = baseSchema.extend({}).omit({
   id: true,
 });
+export const clientCommentParams = insertCommentParams.omit({
+  userId: true,
+});
 
 export const updateCommentSchema = baseSchema;
 export const updateCommentParams = updateCommentSchema.extend({});
@@ -18,7 +21,7 @@ export const commentIdSchema = baseSchema.pick({ id: true });
 // Types for comments - used to type API request params and within Components
 export type Comment = z.infer<typeof commentSchema>;
 export type NewComment = z.infer<typeof insertCommentSchema>;
-export type NewCommentParams = z.infer<typeof insertCommentParams>;
+export type NewCommentParams = z.infer<typeof clientCommentParams>;
 export type UpdateCommentParams = z.infer<typeof updateCommentParams>;
 export type CommentId = z.infer<typeof commentIdSchema>["id"];
 

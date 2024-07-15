@@ -198,6 +198,8 @@ export const getCauses = async ({
 
 export const getCauseById = async (id: CauseId) => {
   const { id: causeId } = causeIdSchema.parse({ id });
+  const { userId } = auth();
+
   const c = await db.cause.findFirst({
     where: { id: causeId },
     select: {
@@ -234,5 +236,19 @@ export const getCauseById = async (id: CauseId) => {
     ratio: (donationSum / c.targetAmount) * 100,
   };
 
-  return causeWithDonationSum;
+  if (userId) {
+    const bookmark = await db.bookmark.findFirst({
+      where: {
+        userId: userId,
+        causeId: causeWithDonationSum.id,
+      },
+    });
+
+    return {
+      ...causeWithDonationSum,
+      isBookmarked: bookmark ? true : false,
+    };
+  }
+
+  return { ...causeWithDonationSum, isBookmarked: false };
 };
