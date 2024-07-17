@@ -1,36 +1,53 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+## Description
 
-## Getting Started
+wehope is a web application designed to gather charity for multiple causes. It leverages modern web technologies to provide a seamless experience for donors and organizers alike.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **User Authentication & Management**: Powered by Clerk for secure and easy user authentication.
+- **Form Handling**: Utilizes React Hook Form for efficient form validation and management.
+- **Database Management**: Prisma ORM to interact with the database seamlessly.
+- **UI Components**: Radix UI and Lucide React for highly customizable and accessible components.
+- **Animations**: Framer Motion and React Spring for smooth animations.
+- **Carousel**: Embla Carousel for creating carousels and sliders.
+- **Email Sending**: Resend to handle transactional emails.
+- **Rate Limiting and Caching**: Upstash for Redis-based rate limiting and caching.
+- **File Uploads**: Uploadthing for easy file upload handling.
+- **Form Validation**: Zod for schema validation.
+- **Themes**: Next Themes for dark mode and theme switching.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Scripts
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Development Server**: `npm run dev`  
+  Start the Next.js development server.
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+- **Build**: `npm run build`  
+  Create an optimized production build of the application.
 
-## Learn More
+- **Post-install**: `npm run postinstall`  
+  Generate Prisma client after dependencies installation.
 
-To learn more about Next.js, take a look at the following resources:
+- **Start**: `npm run start`  
+  Start the Next.js production server.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Lint**: `npm run lint`  
+  Run ESLint to find and fix problems in your code.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+- **Database Generate**: `npm run db:generate`  
+  Generate Prisma client based on the schema.
 
-## Deploy on Vercel
+- **Database Migrate**: `npm run db:migrate`  
+  Apply database migrations in development.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **Database Studio**: `npm run db:studio`  
+  Open Prisma Studio to interact with the database.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+- **Database Push**: `npm run db:push`  
+  Push Prisma schema changes to the database without generating migration files.
+
+- **Database Seed**: `npm run db:seed`  
+  Run the seed script to populate the database with initial data.
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
