@@ -57,9 +57,23 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "../ui/dialog";
+import { useClickAway, useCopyToClipboard } from "@uidotdev/usehooks";
+import data from "@emoji-mart/data";
+import dynamic from "next/dynamic";
+import { usePathname } from "next/navigation";
+const Picker = dynamic(() => import("@emoji-mart/react"), { ssr: false });
 
 type TDonationDetailProps = {
   id: string;
+};
+
+type Emoji = {
+  id: string;
+  name: string;
+  native: string;
+  shortcodes: string;
+  unified: string;
+  keywords: string[];
 };
 
 const CommentItem = ({
@@ -72,7 +86,11 @@ const CommentItem = ({
   textAreaRef: React.MutableRefObject<HTMLTextAreaElement | null>;
 }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [_, copyToClipboard] = useCopyToClipboard();
   const utils = trpc.useUtils();
+  const { isSignedIn, session } = useSession();
+  const pathname = usePathname();
+  const { createQueryString } = useSearchParamsUtil();
   const { mutate: deleteComment, isLoading: isDeletingComment } =
     trpc.comments.deleteComment.useMutation({
       onMutate: async () => {
@@ -105,6 +123,24 @@ const CommentItem = ({
         utils.comments.getComments.refetch();
       },
     });
+  const handleCopyToClipboard = () => {
+    copyToClipboard(
+      `${process.env.NEXT_PUBLIC_VERCEL_URL}${pathname}?${createQueryString(
+        "commentId",
+        comment.id
+      )}`
+    );
+    // router.push(
+    //   pathname +
+    //     "?" +
+    //     createQueryString(
+    //       "categoryId",
+    //       currentValue === categoryId ? "" : currentValue
+    //     )
+    // );
+    toast.info("Comment link copied to clipboard");
+  };
+
   const handleDeleteComment = () => {
     deleteComment(
       { id: comment.id },
@@ -144,28 +180,31 @@ const CommentItem = ({
           <div className="flex flex-col gap-3 divide-y divide-muted-foreground">
             <div className="flex flex-col gap-1.5 py-4">
               <Button
-                className="inline-flex items-center gap-1.5"
+                className="inline-flex items-center gap-1.5 text-primary"
                 variant="secondary"
                 disabled={isDeletingComment}
+                onClick={() => void handleCopyToClipboard()}
               >
                 <Link2 className="w-5 h-5" />
                 Share
               </Button>
-              <Button
-                className="inline-flex items-center gap-1.5"
-                variant="destructive"
-                onClick={handleDeleteComment}
-                disabled={isDeletingComment}
-              >
-                {!isDeletingComment ? (
-                  <>
-                    <Trash2 className="h-5 w-5" />
-                    Delete
-                  </>
-                ) : (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                )}
-              </Button>
+              {isSignedIn && session.user.id === comment.userId ? (
+                <Button
+                  className="inline-flex items-center gap-1.5"
+                  variant="destructive"
+                  onClick={handleDeleteComment}
+                  disabled={isDeletingComment}
+                >
+                  {!isDeletingComment ? (
+                    <>
+                      <Trash2 className="h-5 w-5" />
+                      Delete
+                    </>
+                  ) : (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  )}
+                </Button>
+              ) : null}
             </div>
 
             <div className="py-2">
@@ -236,6 +275,7 @@ const CommentItem = ({
 
 function DonationDetail({ id }: TDonationDetailProps) {
   const [isTruncated, setIsTruncated] = useState(true);
+  const [isPickingEmoji, setIsPickingEmoji] = useState(false);
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
   const [count, setCount] = useState(0);
@@ -343,6 +383,18 @@ function DonationDetail({ id }: TDonationDetailProps) {
 
   const handleBadgeClick = (catId: string) => {
     pushToRoute("/donations", "categoryId", catId);
+  };
+
+  const emojiButtonRef = useClickAway(() => {
+    setIsPickingEmoji(false);
+  });
+
+  const handleEmojiClick = () => {
+    setIsPickingEmoji(!isPickingEmoji);
+  };
+
+  const handleEmojiSelect = (emoji: Emoji) => {
+    form.setValue("content", form.getValues("content") + emoji.native);
   };
 
   useEffect(() => {
@@ -552,6 +604,7 @@ function DonationDetail({ id }: TDonationDetailProps) {
                       <FormControl>
                         <Textarea
                           {...field}
+                          disabled={!isSignedIn || isCreatingComment}
                           ref={textAreaRef}
                           className="min-h-10 h-10 max-h-28"
                           placeholder="Add a comment..."
@@ -571,14 +624,31 @@ function DonationDetail({ id }: TDonationDetailProps) {
                       Post
                     </Button>
                   ) : null}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    type="button"
-                    disabled={isCreatingComment}
-                  >
-                    <Smile className="h-5 w-5" />
-                  </Button>
+                  <div className="relative">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      type="button"
+                      disabled={isCreatingComment || !isSignedIn}
+                      onClick={() => void handleEmojiClick()}
+                    >
+                      <Smile className="h-5 w-5" />
+                    </Button>
+                    {isPickingEmoji ? (
+                      <div
+                        className="absolute top-0 right-0"
+                        // @ts-ignore
+                        ref={emojiButtonRef}
+                      >
+                        <Picker
+                          data={data}
+                          onEmojiSelect={(e: Emoji) =>
+                            void handleEmojiSelect(e)
+                          }
+                        />
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
               </div>
             </form>

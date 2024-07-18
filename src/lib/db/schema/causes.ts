@@ -17,7 +17,7 @@ export const insertCauseParams = baseSchema
     categoryId: z.coerce.string().min(1),
     isForwarded: z.coerce.boolean(),
     isPublished: z.coerce.boolean(),
-    images: z.array(z.instanceof(File)).optional(),
+    images: z.array(z.custom<File>()).optional(),
     uploadedFiles: z.array(UploadedFile).optional(),
   })
   .omit({
@@ -30,7 +30,7 @@ export const updateCauseParams = updateCauseSchema.extend({
   categoryId: z.coerce.string().min(1),
   isForwarded: z.coerce.boolean(),
   isPublished: z.coerce.boolean(),
-  images: z.array(z.instanceof(File)).optional(),
+  images: z.array(z.custom<File>()).optional(),
   uploadedFiles: z.array(UploadedFile).optional(),
 });
 export const causeIdSchema = baseSchema.pick({ id: true });
