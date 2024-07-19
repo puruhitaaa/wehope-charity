@@ -23,6 +23,7 @@ export const getComments = async ({
       _count: {
         select: {
           likes: true,
+          replies: true,
         },
       },
       userId: true,

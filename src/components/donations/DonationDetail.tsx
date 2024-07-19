@@ -11,6 +11,7 @@ import { Skeleton } from "../ui/skeleton";
 import { formatDistance } from "date-fns";
 import InfiniteScroll from "../InfiniteScroll";
 import {
+  ChevronDown,
   Link2,
   Loader2,
   MessageCircleMore,
@@ -86,6 +87,7 @@ const CommentItem = ({
   textAreaRef: React.MutableRefObject<HTMLTextAreaElement | null>;
 }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const [_, copyToClipboard] = useCopyToClipboard();
   const utils = trpc.useUtils();
   const { isSignedIn, session } = useSession();
@@ -130,14 +132,6 @@ const CommentItem = ({
         comment.id
       )}`
     );
-    // router.push(
-    //   pathname +
-    //     "?" +
-    //     createQueryString(
-    //       "categoryId",
-    //       currentValue === categoryId ? "" : currentValue
-    //     )
-    // );
     toast.info("Comment link copied to clipboard");
   };
 
@@ -268,6 +262,17 @@ const CommentItem = ({
             </Tooltip>
           </TooltipProvider>
         </div>
+        <button
+          className="inline-flex items-center gap-1 justify-start px-0 py-2 text-muted-foreground text-sm"
+          onClick={() => void setIsCommentsOpen(!isCommentsOpen)}
+        >
+          <ChevronDown
+            className={ny("h-5 w-5 ease-out transition-transform", {
+              "rotate-180": isCommentsOpen,
+            })}
+          />{" "}
+          {comment._count.replies} replies
+        </button>
       </div>
     </div>
   );
