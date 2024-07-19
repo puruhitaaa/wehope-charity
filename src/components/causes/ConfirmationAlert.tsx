@@ -21,9 +21,10 @@ type TConfirmationAlertProps = {
   isDestructive?: boolean;
   withCancel?: boolean;
   Footer?: React.ReactNode;
-};
+} & React.HTMLAttributes<HTMLElement>;
 
 function ConfirmationAlert({
+  className,
   title,
   triggerText,
   description,
@@ -38,6 +39,7 @@ function ConfirmationAlert({
     <AlertDialog>
       <AlertDialogTrigger
         className={buttonVariants({
+          className: className,
           variant: isDestructive ? "destructive" : "default",
           size: Icon ? "icon" : "default",
         })}
