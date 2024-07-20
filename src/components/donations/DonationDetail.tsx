@@ -62,6 +62,7 @@ import { useClickAway, useCopyToClipboard } from "@uidotdev/usehooks";
 import data from "@emoji-mart/data";
 import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
+import ConfirmationAlert from "../causes/ConfirmationAlert";
 const Picker = dynamic(() => import("@emoji-mart/react"), { ssr: false });
 
 type TDonationDetailProps = {
@@ -214,6 +215,7 @@ const CommentItem = ({
         comment.id
       )}`
     );
+    setIsDialogOpen(false);
     toast.info("Comment link copied to clipboard");
   };
 
@@ -283,21 +285,16 @@ const CommentItem = ({
                 Share
               </Button>
               {isSignedIn && session.user.id === comment.userId ? (
-                <Button
-                  className="inline-flex items-center gap-1.5"
-                  variant="destructive"
-                  onClick={handleDeleteComment}
-                  disabled={isDeletingComment}
-                >
-                  {!isDeletingComment ? (
-                    <>
-                      <Trash2 className="h-5 w-5" />
-                      Delete
-                    </>
-                  ) : (
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  )}
-                </Button>
+                <ConfirmationAlert
+                  className="w-full inline-flex gap-1.5 flex-row-reverse"
+                  isDestructive
+                  onAction={handleDeleteComment}
+                  Icon={Trash2}
+                  actionText="Proceed"
+                  title="Delete comment?"
+                  triggerText="Delete"
+                  withCancel
+                />
               ) : null}
             </div>
 
@@ -343,10 +340,39 @@ const CommentItem = ({
         <div className="flex items-center gap-3">
           <LikeButton isGhost={parentId ? true : false} comment={comment} />
 
+<<<<<<< HEAD
           <ReplyButton
             onClick={handleReplyClick}
             isGhost={parentId ? true : false}
           />
+=======
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                {isSignedIn ? (
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    type="button"
+                    onClick={() => void textAreaRef.current?.focus()}
+                  >
+                    <MessageCircleMore className="h-5 w-5" />
+                  </Button>
+                ) : (
+                  <SignInButton mode="modal" forceRedirectUrl={pathname}>
+                    <Button variant="outline" size="icon" type="button">
+                      <MessageCircleMore className="h-5 w-5" />
+                    </Button>
+                  </SignInButton>
+                )}
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Reply Comment</p>
+                <TooltipArrow />
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+>>>>>>> bf9741da72f4bd04338ac08bbd1769ee55354920
         </div>
         {!parentId && comment._count.replies > 0 ? (
           <button
@@ -392,6 +418,7 @@ function DonationDetail({ id }: TDonationDetailProps) {
 
   const { isSignedIn } = useSession();
   const { pushToRoute } = useSearchParamsUtil();
+  const pathname = usePathname();
 
   const [page, setPage] = useState(0);
   const { data: cause, isLoading: isLoadingCause } =
@@ -703,69 +730,80 @@ function DonationDetail({ id }: TDonationDetailProps) {
         )}
 
         {!isLoadingComments ? (
-          <Form {...form}>
-            <form
-              className="p-2 sticky bottom-0 bg-background"
-              onSubmit={form.handleSubmit(handleSubmit)}
-            >
-              <div className="flex flex-col lg:flex-row gap-1.5">
-                <FormField
-                  control={form.control}
-                  name="content"
-                  render={({ field }) => (
-                    <FormItem className="w-full">
-                      <FormControl>
-                        <Textarea
-                          {...field}
-                          disabled={!isSignedIn || isCreatingComment}
-                          ref={textAreaRef}
-                          className="min-h-10 h-10 max-h-28"
-                          placeholder="Add a comment..."
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <div className="flex items-center gap-1.5">
-                  {form.formState.isDirty && form.formState.isValid ? (
-                    <Button
-                      className="text-primary hover:text-primary"
-                      variant="ghost"
-                      type="submit"
-                      disabled={isCreatingComment}
-                    >
-                      Post
-                    </Button>
-                  ) : null}
-                  <div className="relative">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      type="button"
-                      disabled={isCreatingComment || !isSignedIn}
-                      onClick={() => void handleEmojiClick()}
-                    >
-                      <Smile className="h-5 w-5" />
-                    </Button>
-                    {isPickingEmoji ? (
-                      <div
-                        className="absolute top-0 right-0"
-                        // @ts-ignore
-                        ref={emojiButtonRef}
+          <div className="relative">
+            {!isSignedIn ? (
+              <div className="absolute z-10 inset-0 m-auto bg-background/50 flex justify-center items-center">
+                <SignInButton mode="modal" forceRedirectUrl={pathname}>
+                  <Button className="w-full" variant="link">
+                    Sign In
+                  </Button>
+                </SignInButton>
+              </div>
+            ) : null}
+            <Form {...form}>
+              <form
+                className="p-2 sticky bottom-0 bg-background"
+                onSubmit={form.handleSubmit(handleSubmit)}
+              >
+                <div className="flex flex-col lg:flex-row gap-1.5">
+                  <FormField
+                    control={form.control}
+                    name="content"
+                    render={({ field }) => (
+                      <FormItem className="w-full">
+                        <FormControl>
+                          <Textarea
+                            {...field}
+                            disabled={!isSignedIn || isCreatingComment}
+                            ref={textAreaRef}
+                            className="min-h-10 h-10 max-h-28"
+                            placeholder="Add a comment..."
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <div className="flex items-center gap-1.5">
+                    {form.formState.isDirty && form.formState.isValid ? (
+                      <Button
+                        className="text-primary hover:text-primary"
+                        variant="ghost"
+                        type="submit"
+                        disabled={isCreatingComment}
                       >
-                        <Picker
-                          data={data}
-                          onEmojiSelect={(e: Emoji) =>
-                            void handleEmojiSelect(e)
-                          }
-                        />
-                      </div>
+                        Post
+                      </Button>
                     ) : null}
+                    <div className="relative">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        type="button"
+                        disabled={isCreatingComment || !isSignedIn}
+                        onClick={() => void handleEmojiClick()}
+                      >
+                        <Smile className="h-5 w-5" />
+                      </Button>
+                      {isPickingEmoji ? (
+                        <div
+                          className="absolute top-0 right-0"
+                          // @ts-ignore
+                          ref={emojiButtonRef}
+                        >
+                          <Picker
+                            data={data}
+                            onEmojiSelect={(e: Emoji) =>
+                              void handleEmojiSelect(e)
+                            }
+                          />
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
-              </div>
-            </form>
-          </Form>
+              </form>
+            </Form>
+          </div>
         ) : (
           <div className="flex flex-col lg:flex-row gap-1.5">
             <Skeleton className="h-10 w-full" />
