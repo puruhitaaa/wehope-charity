@@ -9,6 +9,7 @@ export const getCommentsParams = z.object({
   limit: z.number().min(1).max(50).nullish(),
   cursor: z.string().nullish(),
   causeId: z.string().min(1),
+  parentId: z.string().min(1).optional(),
   skip: z.number().optional(),
 });
 
@@ -16,10 +17,10 @@ export const commentsRouter = router({
   getComments: publicProcedure
     .input(getCommentsParams)
     .query(async ({ input }) => {
-      const { skip, causeId, cursor } = input;
+      const { skip, causeId, cursor, parentId } = input;
 
       const limit = input.limit ?? 9;
-      return getComments({ skip, causeId, cursor, limit });
+      return getComments({ skip, causeId, parentId, cursor, limit });
     }),
   getCommentById: publicProcedure
     .input(commentIdSchema)

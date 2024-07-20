@@ -5,7 +5,7 @@ import { Progress } from "../ui/progress";
 import { currencyFormat, ny } from "@/lib/utils";
 import { Button } from "../ui/button";
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useRef, useState } from "react";
 import { Badge } from "../ui/badge";
 import { Skeleton } from "../ui/skeleton";
 import { formatDistance } from "date-fns";
@@ -38,11 +38,11 @@ import {
 } from "../ui/carousel";
 import { useSearchParamsUtil } from "@/hooks/use-search-params";
 import { BookmarkButton, DonateButton } from "../causes/CauseItem";
-import { useSession } from "@clerk/nextjs";
+import { SignInButton, useSession } from "@clerk/nextjs";
 import { Textarea } from "../ui/textarea";
 import { Form, FormControl, FormField, FormItem } from "../ui/form";
 import { type RouterOutput } from "@/lib/trpc/utils";
-import { useForm } from "react-hook-form";
+import { useForm, type UseFormReturn } from "react-hook-form";
 import {
   clientCommentParams,
   NewCommentParams,
@@ -77,22 +77,104 @@ type Emoji = {
   keywords: string[];
 };
 
+type ReplyButtonProps = {
+  isGhost?: boolean;
+} & React.HTMLAttributes<HTMLButtonElement>;
+
+const ReplyButton = (props: ReplyButtonProps) => {
+  const { isGhost = false, onClick } = props;
+  const { isSignedIn } = useSession();
+  const pathname = usePathname();
+
+  function _renderButton() {
+    switch (isSignedIn) {
+      case true:
+        return (
+          <Button
+            className={ny({ "text-muted-foreground": isGhost })}
+            variant={isGhost ? "ghost" : "outline"}
+            size="icon"
+            type="button"
+            onClick={onClick}
+          >
+            <MessageCircleMore
+              className={ny({ "h-5 w-5": !isGhost, "h-4 w-4": isGhost })}
+            />
+          </Button>
+        );
+      case false:
+        return (
+          <SignInButton mode="modal" forceRedirectUrl={pathname}>
+            <Button
+              className={ny({ "text-muted-foreground": isGhost })}
+              variant={isGhost ? "ghost" : "outline"}
+              size="icon"
+              type="button"
+            >
+              <MessageCircleMore
+                className={ny({ "h-5 w-5": !isGhost, "h-4 w-4": isGhost })}
+              />
+            </Button>
+          </SignInButton>
+        );
+      default:
+        return null;
+    }
+  }
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>{_renderButton()}</TooltipTrigger>
+        <TooltipContent>
+          <p>Reply Comment</p>
+          <TooltipArrow />
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+};
+
 const CommentItem = ({
   causeId,
+  parentId,
   comment,
   textAreaRef,
+  form,
 }: {
   causeId: string;
+  parentId?: string;
   comment: RouterOutput["comments"]["getComments"]["comments"][number];
   textAreaRef: React.MutableRefObject<HTMLTextAreaElement | null>;
+  form: UseFormReturn<NewCommentParams>;
 }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
+  const [page, setPage] = useState(0);
+  const [] = useState();
+
   const [_, copyToClipboard] = useCopyToClipboard();
   const utils = trpc.useUtils();
   const { isSignedIn, session } = useSession();
   const pathname = usePathname();
   const { createQueryString } = useSearchParamsUtil();
+
+  const {
+    data: repliesData,
+    fetchNextPage,
+    hasNextPage,
+    isLoading: isLoadingReplies,
+  } = trpc.comments.getComments.useInfiniteQuery(
+    {
+      limit: 9,
+      causeId,
+      parentId,
+    },
+    {
+      getNextPageParam: (lastPage) => lastPage.nextCursor,
+      enabled: !!parentId && isCommentsOpen,
+    }
+  );
   const { mutate: deleteComment, isLoading: isDeletingComment } =
     trpc.comments.deleteComment.useMutation({
       onMutate: async () => {
@@ -152,14 +234,32 @@ const CommentItem = ({
     );
   };
 
+  const handleReplyClick = () => {
+    textAreaRef.current?.focus();
+    form.setValue("parentId", comment.id);
+    form.setValue("content", `@${comment.user?.name} `);
+  };
+
+  const handleFetchNextPage = () => {
+    fetchNextPage();
+    setPage((prev) => prev + 1);
+  };
+
+  const replies = repliesData?.pages[page]?.comments;
+
   return (
     <div
-      className="flex flex-col gap-3 dark:shadow-none shadow rounded-xl p-4 relative"
+      className="flex flex-col gap-3 dark:shadow-none shadow rounded-xl p-4 relative group"
       key={comment.id}
     >
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogTrigger asChild>
-          <Button variant="ghost" className="absolute top-0 right-0 m-4">
+          <Button
+            variant="ghost"
+            className={ny("absolute top-0 right-0 m-4", {
+              "hidden group-hover:block": parentId,
+            })}
+          >
             <MoreHorizontal className="h-5 w-5" />
           </Button>
         </DialogTrigger>
@@ -241,38 +341,41 @@ const CommentItem = ({
           {comment._count.likes > 1 ? "s" : ""}
         </p>
         <div className="flex items-center gap-3">
-          <LikeButton comment={comment} />
+          <LikeButton isGhost={parentId ? true : false} comment={comment} />
 
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  type="button"
-                  onClick={() => void textAreaRef.current?.focus()}
-                >
-                  <MessageCircleMore className="h-5 w-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Reply Comment</p>
-                <TooltipArrow />
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <ReplyButton
+            onClick={handleReplyClick}
+            isGhost={parentId ? true : false}
+          />
         </div>
-        <button
-          className="inline-flex items-center gap-1 justify-start px-0 py-2 text-muted-foreground text-sm"
-          onClick={() => void setIsCommentsOpen(!isCommentsOpen)}
-        >
-          <ChevronDown
-            className={ny("h-5 w-5 ease-out transition-transform", {
-              "rotate-180": isCommentsOpen,
-            })}
-          />{" "}
-          {comment._count.replies} replies
-        </button>
+        {!parentId && comment._count.replies > 0 ? (
+          <button
+            className="inline-flex items-center gap-1 justify-start px-0 py-2 text-muted-foreground text-sm"
+            onClick={() => void setIsCommentsOpen(!isCommentsOpen)}
+          >
+            <ChevronDown
+              className={ny("h-5 w-5 ease-out transition-transform", {
+                "rotate-180": isCommentsOpen,
+              })}
+            />{" "}
+            {comment._count.replies} replies
+          </button>
+        ) : null}
+        {isCommentsOpen ? (
+          replies?.length ? (
+            <div className="gap-1.5 flex flex-col">
+              {JSON.stringify(replies)}
+              {/* <CommentItem
+                key={comment.id}
+                textAreaRef={textAreaRef}
+                comment={comment}
+                causeId={causeId}
+                parentId={comment.id}
+                form={form}
+              /> */}
+            </div>
+          ) : null
+        ) : null}
       </div>
     </div>
   );
@@ -364,9 +467,13 @@ function DonationDetail({ id }: TDonationDetailProps) {
   });
 
   const handleSubmit = (values: NewCommentParams) => {
+    const cleanedValues = { ...values };
+
+    cleanedValues.content = cleanedValues.content.replace(/@.*?\s/g, "");
+
     createComment(
       {
-        content: values.content,
+        ...cleanedValues,
         causeId: id,
       },
       {
@@ -583,6 +690,7 @@ function DonationDetail({ id }: TDonationDetailProps) {
                 textAreaRef={textAreaRef}
                 comment={comment}
                 causeId={id}
+                form={form}
               />
             ))
           ) : null

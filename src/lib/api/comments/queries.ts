@@ -9,11 +9,17 @@ import { filteredUser } from "@/lib/utils";
 
 export const getComments = async ({
   causeId,
+  parentId,
   cursor,
   limit,
   skip,
 }: z.infer<typeof getCommentsParams>) => {
   const { userId } = auth();
+
+  const basicQuery = { causeId: causeId ? causeId : undefined };
+  const query = !parentId
+    ? { ...basicQuery, parentId: null }
+    : { AND: { ...basicQuery, parentId, NOT: { parentId: null } } };
 
   const c = await db.comment.findMany({
     take: limit! + 1,
@@ -29,6 +35,7 @@ export const getComments = async ({
       userId: true,
       content: true,
       createdAt: true,
+      parent: parentId ? true : false,
     },
     orderBy: [
       { createdAt: "desc" },
@@ -36,9 +43,7 @@ export const getComments = async ({
         id: "asc",
       },
     ],
-    where: {
-      causeId: causeId ? causeId : undefined,
-    },
+    where: query,
   });
 
   let nextCursor: typeof cursor | undefined = undefined;

@@ -18,9 +18,10 @@ import { toast } from "sonner";
 
 type TLikeButtonProps = {
   comment: RouterOutput["comments"]["getComments"]["comments"][number];
+  isGhost?: boolean;
 };
 
-function LikeButton({ comment }: TLikeButtonProps) {
+function LikeButton({ comment, isGhost }: TLikeButtonProps) {
   const { isLoaded, isSignedIn } = useSession();
   const pathname = usePathname();
   const utils = trpc.useUtils();
@@ -87,26 +88,35 @@ function LikeButton({ comment }: TLikeButtonProps) {
           <SignInButton mode="modal" forceRedirectUrl={pathname}>
             <TooltipTrigger
               className={buttonVariants({
+                className: ny({ "text-muted-foreground": isGhost }),
                 size: "icon",
-                variant: "outline",
+                variant: !isGhost ? "outline" : "ghost",
               })}
               disabled={!isLoaded}
             >
-              <Heart className="h-5 w-5 text-pink-500" />
+              <Heart
+                className={ny({
+                  "text-pink-500 h-5 w-5": !isGhost,
+                  "h-4 w-4": isGhost,
+                })}
+              />
             </TooltipTrigger>
           </SignInButton>
         ) : (
           <TooltipTrigger
             className={buttonVariants({
               size: "icon",
-              variant: "outline",
+              variant: !isGhost ? "outline" : "ghost",
             })}
             disabled={!isLoaded || isLoadingLike}
             onClick={() => handleLikeClick()}
           >
             <Heart
-              className={ny("h-5 w-5 text-pink-500", {
+              className={ny({
+                "h-5 w-5 text-pink-500": !isGhost,
+                "h-4 w-4": isGhost,
                 "fill-pink-500": comment.isLiked,
+                "text-transparent": comment.isLiked && isGhost,
               })}
             />
           </TooltipTrigger>
