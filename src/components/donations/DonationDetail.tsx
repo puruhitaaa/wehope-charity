@@ -5,12 +5,13 @@ import { Progress } from "../ui/progress";
 import { currencyFormat, ny } from "@/lib/utils";
 import { Button } from "../ui/button";
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useRef, useState } from "react";
 import { Badge } from "../ui/badge";
 import { Skeleton } from "../ui/skeleton";
 import { formatDistance } from "date-fns";
 import InfiniteScroll from "../InfiniteScroll";
 import {
+  ChevronDown,
   Link2,
   Loader2,
   MessageCircleMore,
@@ -37,11 +38,11 @@ import {
 } from "../ui/carousel";
 import { useSearchParamsUtil } from "@/hooks/use-search-params";
 import { BookmarkButton, DonateButton } from "../causes/CauseItem";
-import { useSession } from "@clerk/nextjs";
+import { SignInButton, useSession } from "@clerk/nextjs";
 import { Textarea } from "../ui/textarea";
 import { Form, FormControl, FormField, FormItem } from "../ui/form";
 import { type RouterOutput } from "@/lib/trpc/utils";
-import { useForm } from "react-hook-form";
+import { useForm, type UseFormReturn } from "react-hook-form";
 import {
   clientCommentParams,
   NewCommentParams,
@@ -61,6 +62,7 @@ import { useClickAway, useCopyToClipboard } from "@uidotdev/usehooks";
 import data from "@emoji-mart/data";
 import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
+import ConfirmationAlert from "../causes/ConfirmationAlert";
 const Picker = dynamic(() => import("@emoji-mart/react"), { ssr: false });
 
 type TDonationDetailProps = {
@@ -76,51 +78,175 @@ type Emoji = {
   keywords: string[];
 };
 
+type ReplyButtonProps = {
+  isGhost?: boolean;
+} & React.HTMLAttributes<HTMLButtonElement>;
+
+const ReplyButton = (props: ReplyButtonProps) => {
+  const { isGhost = false, onClick } = props;
+  const { isSignedIn } = useSession();
+  const pathname = usePathname();
+
+  function _renderButton() {
+    switch (isSignedIn) {
+      case true:
+        return (
+          <Button
+            className={ny({ "text-muted-foreground": isGhost })}
+            variant={isGhost ? "ghost" : "outline"}
+            size="icon"
+            type="button"
+            onClick={onClick}
+          >
+            <MessageCircleMore
+              className={ny({ "h-5 w-5": !isGhost, "h-4 w-4": isGhost })}
+            />
+          </Button>
+        );
+      case false:
+        return (
+          <SignInButton mode="modal" forceRedirectUrl={pathname}>
+            <Button
+              className={ny({ "text-muted-foreground": isGhost })}
+              variant={isGhost ? "ghost" : "outline"}
+              size="icon"
+              type="button"
+            >
+              <MessageCircleMore
+                className={ny({ "h-5 w-5": !isGhost, "h-4 w-4": isGhost })}
+              />
+            </Button>
+          </SignInButton>
+        );
+      default:
+        return null;
+    }
+  }
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>{_renderButton()}</TooltipTrigger>
+        <TooltipContent>
+          <p>Reply Comment</p>
+          <TooltipArrow />
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+};
+
 const CommentItem = ({
   causeId,
   comment,
   textAreaRef,
+  form,
+  isReply = false,
+  passedParentId,
 }: {
   causeId: string;
-  comment: RouterOutput["comments"]["getComments"]["comments"][number];
+  comment:
+    | RouterOutput["comments"]["getComments"]["comments"][number]
+    | RouterOutput["comments"]["getReplies"]["replies"][number];
   textAreaRef: React.MutableRefObject<HTMLTextAreaElement | null>;
+  form: UseFormReturn<NewCommentParams>;
+  isReply?: boolean;
+  passedParentId?: string | null;
 }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isCommentsOpen, setIsCommentsOpen] = useState(false);
+  const [page, setPage] = useState(0);
+  const [parentId, setParentId] = useState<string | null>(null);
+
   const [_, copyToClipboard] = useCopyToClipboard();
   const utils = trpc.useUtils();
   const { isSignedIn, session } = useSession();
   const pathname = usePathname();
   const { createQueryString } = useSearchParamsUtil();
+
+  const {
+    data: repliesData,
+    fetchNextPage,
+    hasNextPage,
+    isLoading: isLoadingReplies,
+    refetch: refetchReplies,
+  } = trpc.comments.getReplies.useInfiniteQuery(
+    {
+      limit: 9,
+      causeId,
+      parentId: comment.id,
+    },
+    {
+      getNextPageParam: (lastPage) => lastPage.nextCursor,
+      enabled: isCommentsOpen && !!comment.id,
+      refetchOnWindowFocus: false,
+    }
+  );
+
   const { mutate: deleteComment, isLoading: isDeletingComment } =
     trpc.comments.deleteComment.useMutation({
       onMutate: async () => {
-        await utils.comments.getComments.cancel();
-        const previousComments = utils.comments.getComments.getData();
-        if (previousComments) {
-          const newComments = previousComments.comments.filter(
-            (c) => c.id !== comment.id
-          );
-          utils.comments.getComments.setInfiniteData({ causeId }, (old) => {
-            if (old === undefined) {
-              return;
-            }
-            return {
-              ...old,
-              comments: newComments,
-            };
-          });
+        if (!comment.id && isCommentsOpen) {
+          await utils.comments.getComments.cancel();
+          const previousComments = utils.comments.getComments.getData();
+          if (previousComments) {
+            const newComments = previousComments.comments.filter(
+              (c) => c.id !== comment.id
+            );
+            utils.comments.getComments.setInfiniteData({ causeId }, (old) => {
+              if (old === undefined) {
+                return;
+              }
+              return {
+                ...old,
+                comments: newComments,
+              };
+            });
+          }
+          return { previousComments };
+        } else {
+          await utils.comments.getReplies.cancel();
+          const previousReplies = utils.comments.getReplies.getData();
+          if (previousReplies) {
+            const newReplies = previousReplies.replies.filter(
+              (r) => r.id !== comment.id
+            );
+            utils.comments.getReplies.setInfiniteData(
+              { causeId, parentId: comment.id },
+              (old) => {
+                if (old === undefined) {
+                  return;
+                }
+                return {
+                  ...old,
+                  replies: newReplies,
+                };
+              }
+            );
+          }
+          return { previousReplies };
         }
-        return { previousComments };
       },
       onError: (err, _, context) => {
-        utils.comments.getComments.setData(
-          { causeId },
-          context?.previousComments
-        );
+        if (!comment.id && isCommentsOpen) {
+          utils.comments.getComments.setData(
+            { causeId },
+            context?.previousComments
+          );
+        } else {
+          utils.comments.getReplies.setData(
+            { causeId, parentId: comment.id },
+            context?.previousReplies
+          );
+        }
         toast.error(err.message);
       },
       onSettled: () => {
-        utils.comments.getComments.refetch();
+        if (!comment.id && isCommentsOpen) {
+          utils.comments.getComments.refetch();
+        } else {
+          utils.comments.getReplies.refetch();
+        }
       },
     });
   const handleCopyToClipboard = () => {
@@ -130,14 +256,7 @@ const CommentItem = ({
         comment.id
       )}`
     );
-    // router.push(
-    //   pathname +
-    //     "?" +
-    //     createQueryString(
-    //       "categoryId",
-    //       currentValue === categoryId ? "" : currentValue
-    //     )
-    // );
+    setIsDialogOpen(false);
     toast.info("Comment link copied to clipboard");
   };
 
@@ -158,14 +277,37 @@ const CommentItem = ({
     );
   };
 
+  const handleReplyClick = () => {
+    textAreaRef.current?.focus();
+    form.setValue("parentId", passedParentId ? passedParentId : comment.id);
+    form.setValue("referenceId", isReply ? comment.id : null);
+
+    form.setValue("content", `@${comment.user?.name} `);
+  };
+
+  const handleFetchNextPage = () => {
+    fetchNextPage();
+    setPage((prev) => prev + 1);
+  };
+
+  const replies = repliesData?.pages[page]?.replies;
+
+  useEffect(() => {
+    if (!passedParentId && !isReply) {
+      setParentId(comment.id);
+    }
+  }, [passedParentId, isReply, comment.id]);
+
   return (
-    <div
-      className="flex flex-col gap-3 dark:shadow-none shadow rounded-xl p-4 relative"
-      key={comment.id}
-    >
+    <div className="flex flex-col gap-3 dark:shadow-none shadow rounded-xl p-4 relative group">
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogTrigger asChild>
-          <Button variant="ghost" className="absolute top-0 right-0 m-4">
+          <Button
+            variant="ghost"
+            className={ny("absolute top-0 right-0 m-4", {
+              "hidden group-hover:block": isReply,
+            })}
+          >
             <MoreHorizontal className="h-5 w-5" />
           </Button>
         </DialogTrigger>
@@ -189,21 +331,16 @@ const CommentItem = ({
                 Share
               </Button>
               {isSignedIn && session.user.id === comment.userId ? (
-                <Button
-                  className="inline-flex items-center gap-1.5"
-                  variant="destructive"
-                  onClick={handleDeleteComment}
-                  disabled={isDeletingComment}
-                >
-                  {!isDeletingComment ? (
-                    <>
-                      <Trash2 className="h-5 w-5" />
-                      Delete
-                    </>
-                  ) : (
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  )}
-                </Button>
+                <ConfirmationAlert
+                  className="w-full inline-flex gap-1.5 flex-row-reverse"
+                  isDestructive
+                  onAction={handleDeleteComment}
+                  Icon={Trash2}
+                  actionText="Proceed"
+                  title="Delete comment?"
+                  triggerText="Delete"
+                  withCancel
+                />
               ) : null}
             </div>
 
@@ -238,7 +375,14 @@ const CommentItem = ({
       </div>
 
       <div className="max-h-48 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-primary">
-        <p>{comment.content}</p>
+        <span>
+          {isReply ? (
+            <Badge className="align-middle" variant="secondary">
+              @{comment.user?.name}
+            </Badge>
+          ) : null}{" "}
+          {comment.content}
+        </span>
       </div>
 
       <div className="gap-1.5 flex flex-col">
@@ -247,27 +391,56 @@ const CommentItem = ({
           {comment._count.likes > 1 ? "s" : ""}
         </p>
         <div className="flex items-center gap-3">
-          <LikeButton comment={comment} />
+          <LikeButton isGhost={isReply ? true : false} comment={comment} />
 
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  type="button"
-                  onClick={() => void textAreaRef.current?.focus()}
-                >
-                  <MessageCircleMore className="h-5 w-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Reply Comment</p>
-                <TooltipArrow />
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <ReplyButton
+            onClick={handleReplyClick}
+            isGhost={isReply ? true : false}
+          />
         </div>
+        {comment._count.replies > 0 ? (
+          <button
+            className="inline-flex items-center gap-1 justify-start px-0 py-2 text-muted-foreground text-sm"
+            onClick={() => {
+              refetchReplies();
+              void setIsCommentsOpen(!isCommentsOpen);
+            }}
+          >
+            <ChevronDown
+              className={ny("h-5 w-5 ease-out transition-transform", {
+                "rotate-180": isCommentsOpen,
+              })}
+            />{" "}
+            {comment._count.replies} replies
+          </button>
+        ) : null}
+        {isCommentsOpen ? (
+          replies?.length ? (
+            <div className="gap-1.5 flex flex-col">
+              {replies.map((reply) => (
+                <CommentItem
+                  key={reply.id}
+                  textAreaRef={textAreaRef}
+                  comment={reply}
+                  causeId={causeId}
+                  form={form}
+                  isReply={true}
+                  passedParentId={parentId}
+                />
+              ))}
+              <InfiniteScroll
+                hasMore={hasNextPage ?? false}
+                isLoading={isLoadingReplies}
+                next={handleFetchNextPage}
+                threshold={1}
+              >
+                {hasNextPage && (
+                  <Loader2 className="my-4 h-8 w-8 animate-spin bg-foreground" />
+                )}
+              </InfiniteScroll>
+            </div>
+          ) : null
+        ) : null}
       </div>
     </div>
   );
@@ -284,6 +457,7 @@ function DonationDetail({ id }: TDonationDetailProps) {
 
   const { isSignedIn } = useSession();
   const { pushToRoute } = useSearchParamsUtil();
+  const pathname = usePathname();
 
   const [page, setPage] = useState(0);
   const { data: cause, isLoading: isLoadingCause } =
@@ -299,6 +473,7 @@ function DonationDetail({ id }: TDonationDetailProps) {
       causeId: id,
     },
     {
+      queryKey: ["comments.getComments", { causeId: id }],
       getNextPageParam: (lastPage) => lastPage.nextCursor,
     }
   );
@@ -306,46 +481,103 @@ function DonationDetail({ id }: TDonationDetailProps) {
   const { mutate: createComment, isLoading: isCreatingComment } =
     trpc.comments.createComment.useMutation({
       onMutate: async (values) => {
-        await utils.comments.getComments.cancel();
+        if (!values.parentId && !values.referenceId) {
+          await utils.comments.getComments.cancel();
 
-        const previousComments = utils.comments.getComments.getData({
-          causeId: id,
-          limit: 9,
-        });
-
-        if (previousComments) {
-          //@ts-ignore
-          utils.comments.getComments.setInfiniteData({ causeId: id }, (old) => {
-            if (old === undefined) {
-              return {
-                pages: [],
-                pageParams: undefined,
-              };
-            }
-
-            const withNewData = old.pages.map((page) => ({
-              ...page,
-              comments: [values, ...page.comments],
-            }));
-
-            return {
-              ...old,
-              pages: withNewData,
-            };
+          const previousComments = utils.comments.getComments.getData({
+            causeId: id,
+            limit: 9,
           });
-        }
 
-        return { previousComments };
+          if (previousComments) {
+            utils.comments.getComments.setInfiniteData(
+              { causeId: id },
+              //@ts-ignore
+              (old) => {
+                if (old === undefined) {
+                  return {
+                    pages: [],
+                    pageParams: undefined,
+                  };
+                }
+
+                const withNewData = old.pages.map((page) => ({
+                  ...page,
+                  comments: [values, ...page.comments],
+                }));
+
+                return {
+                  ...old,
+                  pages: withNewData,
+                };
+              }
+            );
+          }
+
+          return { previousComments };
+        } else if (values.parentId || values.referenceId) {
+          await utils.comments.getReplies.cancel();
+          const previousReplies = utils.comments.getReplies.getData({
+            causeId: id,
+            parentId: values.parentId ? values.parentId : undefined,
+            limit: 9,
+          });
+          if (previousReplies) {
+            utils.comments.getReplies.setInfiniteData(
+              {
+                causeId: id,
+                parentId: values.parentId ? values.parentId : undefined,
+              },
+              //@ts-ignore
+              (old) => {
+                if (old === undefined) {
+                  return {
+                    pages: [],
+                    pageParams: undefined,
+                  };
+                }
+
+                const withNewData = old.pages.map((page) => ({
+                  ...page,
+                  replies: [values, ...page.replies],
+                }));
+
+                return {
+                  ...old,
+                  pages: withNewData,
+                };
+              }
+            );
+          }
+
+          return { previousReplies };
+        }
       },
-      onError: (err, _, context) => {
-        utils.comments.getComments.setData(
-          { causeId: id },
-          context?.previousComments
-        );
+      onError: (err, values, context) => {
+        if (!values.parentId && !values.referenceId) {
+          utils.comments.getComments.setInfiniteData(
+            { causeId: id },
+            //@ts-ignore
+            context?.previousComments
+          );
+        } else if (values.parentId || values.referenceId) {
+          utils.comments.getReplies.setInfiniteData(
+            {
+              causeId: id,
+              parentId: values.parentId ? values.parentId : undefined,
+            },
+            //@ts-ignore
+            context?.previousReplies
+          );
+        }
         toast.error(err.message);
       },
-      onSettled: () => {
-        utils.comments.getComments.refetch();
+      onSettled: (values) => {
+        if (!values?.parentId && !values?.referenceId) {
+          utils.comments.getComments.invalidate();
+        } else if (values?.parentId || values?.referenceId) {
+          utils.comments.getReplies.invalidate();
+        }
       },
     });
 
@@ -359,9 +591,13 @@ function DonationDetail({ id }: TDonationDetailProps) {
   });
 
   const handleSubmit = (values: NewCommentParams) => {
+    const cleanedValues = { ...values };
+
+    cleanedValues.content = cleanedValues.content.replace(/@.*?\s/g, "");
+
     createComment(
       {
-        content: values.content,
+        ...cleanedValues,
         causeId: id,
       },
       {
@@ -564,7 +800,7 @@ function DonationDetail({ id }: TDonationDetailProps) {
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 lg:overflow-y-auto lg:scrollbar-thin lg:scrollbar-track-transparent lg:scrollbar-thumb-primary">
+      <div className="flex flex-col gap-3 lg:overflow-y-auto lg:scrollbar-thin lg:scrollbar-track-transparent lg:scrollbar-thumb-primary relative">
         {!isLoadingComments ? (
           <h5 className="font-semibold text-lg lg:text-2xl">Comments</h5>
         ) : (
@@ -578,9 +814,12 @@ function DonationDetail({ id }: TDonationDetailProps) {
                 textAreaRef={textAreaRef}
                 comment={comment}
                 causeId={id}
+                form={form}
               />
             ))
-          ) : null
+          ) : (
+            <p className="text-muted-foreground">Be the first to comment!</p>
+          )
         ) : (
           <div className="flex flex-col gap-3">
             {[1, 2, 3].map((v) => (
@@ -590,69 +829,80 @@ function DonationDetail({ id }: TDonationDetailProps) {
         )}
 
         {!isLoadingComments ? (
-          <Form {...form}>
-            <form
-              className="p-2 sticky bottom-0 bg-background"
-              onSubmit={form.handleSubmit(handleSubmit)}
-            >
-              <div className="flex flex-col lg:flex-row gap-1.5">
-                <FormField
-                  control={form.control}
-                  name="content"
-                  render={({ field }) => (
-                    <FormItem className="w-full">
-                      <FormControl>
-                        <Textarea
-                          {...field}
-                          disabled={!isSignedIn || isCreatingComment}
-                          ref={textAreaRef}
-                          className="min-h-10 h-10 max-h-28"
-                          placeholder="Add a comment..."
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <div className="flex items-center gap-1.5">
-                  {form.formState.isDirty && form.formState.isValid ? (
-                    <Button
-                      className="text-primary hover:text-primary"
-                      variant="ghost"
-                      type="submit"
-                      disabled={isCreatingComment}
-                    >
-                      Post
-                    </Button>
-                  ) : null}
-                  <div className="relative">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      type="button"
-                      disabled={isCreatingComment || !isSignedIn}
-                      onClick={() => void handleEmojiClick()}
-                    >
-                      <Smile className="h-5 w-5" />
-                    </Button>
-                    {isPickingEmoji ? (
-                      <div
-                        className="absolute top-0 right-0"
-                        // @ts-ignore
-                        ref={emojiButtonRef}
+          <>
+            {!isSignedIn ? (
+              <div className="absolute z-10 inset-0 m-auto bg-background/50 flex justify-center items-center">
+                <SignInButton mode="modal" forceRedirectUrl={pathname}>
+                  <Button className="w-full" variant="link">
+                    Sign In
+                  </Button>
+                </SignInButton>
+              </div>
+            ) : null}
+            <Form {...form}>
+              <form
+                className="p-2 sticky bottom-0 bg-background"
+                onSubmit={form.handleSubmit(handleSubmit)}
+              >
+                <div className="flex flex-col lg:flex-row gap-1.5">
+                  <FormField
+                    control={form.control}
+                    name="content"
+                    render={({ field }) => (
+                      <FormItem className="w-full">
+                        <FormControl>
+                          <Textarea
+                            {...field}
+                            disabled={!isSignedIn || isCreatingComment}
+                            ref={textAreaRef}
+                            className="min-h-10 h-10 max-h-28"
+                            placeholder="Add a comment..."
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <div className="flex items-center gap-1.5">
+                    {form.formState.isDirty && form.formState.isValid ? (
+                      <Button
+                        className="text-primary hover:text-primary"
+                        variant="ghost"
+                        type="submit"
+                        disabled={isCreatingComment}
                       >
-                        <Picker
-                          data={data}
-                          onEmojiSelect={(e: Emoji) =>
-                            void handleEmojiSelect(e)
-                          }
-                        />
-                      </div>
+                        Post
+                      </Button>
                     ) : null}
+                    <div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        type="button"
+                        disabled={isCreatingComment || !isSignedIn}
+                        onClick={() => void handleEmojiClick()}
+                      >
+                        <Smile className="h-5 w-5" />
+                      </Button>
+                      {isPickingEmoji ? (
+                        <div
+                          className="absolute top-0 right-0"
+                          // @ts-ignore
+                          ref={emojiButtonRef}
+                        >
+                          <Picker
+                            data={data}
+                            onEmojiSelect={(e: Emoji) =>
+                              void handleEmojiSelect(e)
+                            }
+                          />
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
-              </div>
-            </form>
-          </Form>
+              </form>
+            </Form>
+          </>
         ) : (
           <div className="flex flex-col lg:flex-row gap-1.5">
             <Skeleton className="h-10 w-full" />

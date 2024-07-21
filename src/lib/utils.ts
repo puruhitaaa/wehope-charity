@@ -52,6 +52,5 @@ export const filteredUser = (user: User) => {
       ? user.firstName
       : null,
     imageUrl: user.imageUrl,
-    email: user.emailAddresses[0].emailAddress,
   };
 };
