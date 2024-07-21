@@ -829,7 +829,7 @@ function DonationDetail({ id }: TDonationDetailProps) {
         )}
 
         {!isLoadingComments ? (
-          <>
+          <div className="relative">
             {!isSignedIn ? (
               <div className="absolute z-10 inset-0 m-auto bg-background/50 flex justify-center items-center">
                 <SignInButton mode="modal" forceRedirectUrl={pathname}>
@@ -902,7 +902,7 @@ function DonationDetail({ id }: TDonationDetailProps) {
                 </div>
               </form>
             </Form>
-          </>
+          </div>
         ) : (
           <div className="flex flex-col lg:flex-row gap-1.5">
             <Skeleton className="h-10 w-full" />
