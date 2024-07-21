@@ -17,7 +17,9 @@ import { trpc } from "@/lib/trpc/client";
 import { toast } from "sonner";
 
 type TLikeButtonProps = {
-  comment: RouterOutput["comments"]["getComments"]["comments"][number];
+  comment:
+    | RouterOutput["comments"]["getComments"]["comments"][number]
+    | RouterOutput["comments"]["getReplies"]["replies"][number];
   isGhost?: boolean;
 };
 

@@ -138,21 +138,25 @@ const ReplyButton = (props: ReplyButtonProps) => {
 
 const CommentItem = ({
   causeId,
-  parentId,
   comment,
   textAreaRef,
   form,
+  isReply = false,
+  passedParentId,
 }: {
   causeId: string;
-  parentId?: string;
-  comment: RouterOutput["comments"]["getComments"]["comments"][number];
+  comment:
+    | RouterOutput["comments"]["getComments"]["comments"][number]
+    | RouterOutput["comments"]["getReplies"]["replies"][number];
   textAreaRef: React.MutableRefObject<HTMLTextAreaElement | null>;
   form: UseFormReturn<NewCommentParams>;
+  isReply?: boolean;
+  passedParentId?: string | null;
 }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const [page, setPage] = useState(0);
-  const [] = useState();
+  const [parentId, setParentId] = useState<string | null>(null);
 
   const [_, copyToClipboard] = useCopyToClipboard();
   const utils = trpc.useUtils();
@@ -165,47 +169,84 @@ const CommentItem = ({
     fetchNextPage,
     hasNextPage,
     isLoading: isLoadingReplies,
-  } = trpc.comments.getComments.useInfiniteQuery(
+    refetch: refetchReplies,
+  } = trpc.comments.getReplies.useInfiniteQuery(
     {
       limit: 9,
       causeId,
-      parentId,
+      parentId: comment.id,
     },
     {
       getNextPageParam: (lastPage) => lastPage.nextCursor,
-      enabled: !!parentId && isCommentsOpen,
+      enabled: isCommentsOpen && !!comment.id,
+      refetchOnWindowFocus: false,
     }
   );
+
   const { mutate: deleteComment, isLoading: isDeletingComment } =
     trpc.comments.deleteComment.useMutation({
       onMutate: async () => {
-        await utils.comments.getComments.cancel();
-        const previousComments = utils.comments.getComments.getData();
-        if (previousComments) {
-          const newComments = previousComments.comments.filter(
-            (c) => c.id !== comment.id
-          );
-          utils.comments.getComments.setInfiniteData({ causeId }, (old) => {
-            if (old === undefined) {
-              return;
-            }
-            return {
-              ...old,
-              comments: newComments,
-            };
-          });
+        if (!comment.id && isCommentsOpen) {
+          await utils.comments.getComments.cancel();
+          const previousComments = utils.comments.getComments.getData();
+          if (previousComments) {
+            const newComments = previousComments.comments.filter(
+              (c) => c.id !== comment.id
+            );
+            utils.comments.getComments.setInfiniteData({ causeId }, (old) => {
+              if (old === undefined) {
+                return;
+              }
+              return {
+                ...old,
+                comments: newComments,
+              };
+            });
+          }
+          return { previousComments };
+        } else {
+          await utils.comments.getReplies.cancel();
+          const previousReplies = utils.comments.getReplies.getData();
+          if (previousReplies) {
+            const newReplies = previousReplies.replies.filter(
+              (r) => r.id !== comment.id
+            );
+            utils.comments.getReplies.setInfiniteData(
+              { causeId, parentId: comment.id },
+              (old) => {
+                if (old === undefined) {
+                  return;
+                }
+                return {
+                  ...old,
+                  replies: newReplies,
+                };
+              }
+            );
+          }
+          return { previousReplies };
         }
-        return { previousComments };
       },
       onError: (err, _, context) => {
-        utils.comments.getComments.setData(
-          { causeId },
-          context?.previousComments
-        );
+        if (!comment.id && isCommentsOpen) {
+          utils.comments.getComments.setData(
+            { causeId },
+            context?.previousComments
+          );
+        } else {
+          utils.comments.getReplies.setData(
+            { causeId, parentId: comment.id },
+            context?.previousReplies
+          );
+        }
         toast.error(err.message);
       },
       onSettled: () => {
-        utils.comments.getComments.refetch();
+        if (!comment.id && isCommentsOpen) {
+          utils.comments.getComments.refetch();
+        } else {
+          utils.comments.getReplies.refetch();
+        }
       },
     });
   const handleCopyToClipboard = () => {
@@ -238,7 +279,9 @@ const CommentItem = ({
 
   const handleReplyClick = () => {
     textAreaRef.current?.focus();
-    form.setValue("parentId", comment.id);
+    form.setValue("parentId", passedParentId ? passedParentId : comment.id);
+    form.setValue("referenceId", isReply ? comment.id : null);
+
     form.setValue("content", `@${comment.user?.name} `);
   };
 
@@ -247,19 +290,22 @@ const CommentItem = ({
     setPage((prev) => prev + 1);
   };
 
-  const replies = repliesData?.pages[page]?.comments;
+  const replies = repliesData?.pages[page]?.replies;
+
+  useEffect(() => {
+    if (!passedParentId && !isReply) {
+      setParentId(comment.id);
+    }
+  }, [passedParentId, isReply, comment.id]);
 
   return (
-    <div
-      className="flex flex-col gap-3 dark:shadow-none shadow rounded-xl p-4 relative group"
-      key={comment.id}
-    >
+    <div className="flex flex-col gap-3 dark:shadow-none shadow rounded-xl p-4 relative group">
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogTrigger asChild>
           <Button
             variant="ghost"
             className={ny("absolute top-0 right-0 m-4", {
-              "hidden group-hover:block": parentId,
+              "hidden group-hover:block": isReply,
             })}
           >
             <MoreHorizontal className="h-5 w-5" />
@@ -329,7 +375,14 @@ const CommentItem = ({
       </div>
 
       <div className="max-h-48 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-primary">
-        <p>{comment.content}</p>
+        <span>
+          {isReply ? (
+            <Badge className="align-middle" variant="secondary">
+              @{comment.user?.name}
+            </Badge>
+          ) : null}{" "}
+          {comment.content}
+        </span>
       </div>
 
       <div className="gap-1.5 flex flex-col">
@@ -338,46 +391,20 @@ const CommentItem = ({
           {comment._count.likes > 1 ? "s" : ""}
         </p>
         <div className="flex items-center gap-3">
-          <LikeButton isGhost={parentId ? true : false} comment={comment} />
+          <LikeButton isGhost={isReply ? true : false} comment={comment} />
 
-<<<<<<< HEAD
           <ReplyButton
             onClick={handleReplyClick}
-            isGhost={parentId ? true : false}
+            isGhost={isReply ? true : false}
           />
-=======
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                {isSignedIn ? (
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    type="button"
-                    onClick={() => void textAreaRef.current?.focus()}
-                  >
-                    <MessageCircleMore className="h-5 w-5" />
-                  </Button>
-                ) : (
-                  <SignInButton mode="modal" forceRedirectUrl={pathname}>
-                    <Button variant="outline" size="icon" type="button">
-                      <MessageCircleMore className="h-5 w-5" />
-                    </Button>
-                  </SignInButton>
-                )}
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Reply Comment</p>
-                <TooltipArrow />
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
->>>>>>> bf9741da72f4bd04338ac08bbd1769ee55354920
         </div>
-        {!parentId && comment._count.replies > 0 ? (
+        {comment._count.replies > 0 ? (
           <button
             className="inline-flex items-center gap-1 justify-start px-0 py-2 text-muted-foreground text-sm"
-            onClick={() => void setIsCommentsOpen(!isCommentsOpen)}
+            onClick={() => {
+              refetchReplies();
+              void setIsCommentsOpen(!isCommentsOpen);
+            }}
           >
             <ChevronDown
               className={ny("h-5 w-5 ease-out transition-transform", {
@@ -390,15 +417,27 @@ const CommentItem = ({
         {isCommentsOpen ? (
           replies?.length ? (
             <div className="gap-1.5 flex flex-col">
-              {JSON.stringify(replies)}
-              {/* <CommentItem
-                key={comment.id}
-                textAreaRef={textAreaRef}
-                comment={comment}
-                causeId={causeId}
-                parentId={comment.id}
-                form={form}
-              /> */}
+              {replies.map((reply) => (
+                <CommentItem
+                  key={reply.id}
+                  textAreaRef={textAreaRef}
+                  comment={reply}
+                  causeId={causeId}
+                  form={form}
+                  isReply={true}
+                  passedParentId={parentId}
+                />
+              ))}
+              <InfiniteScroll
+                hasMore={hasNextPage ?? false}
+                isLoading={isLoadingReplies}
+                next={handleFetchNextPage}
+                threshold={1}
+              >
+                {hasNextPage && (
+                  <Loader2 className="my-4 h-8 w-8 animate-spin bg-foreground" />
+                )}
+              </InfiniteScroll>
             </div>
           ) : null
         ) : null}
@@ -434,6 +473,7 @@ function DonationDetail({ id }: TDonationDetailProps) {
       causeId: id,
     },
     {
+      queryKey: ["comments.getComments", { causeId: id }],
       getNextPageParam: (lastPage) => lastPage.nextCursor,
     }
   );
@@ -441,46 +481,103 @@ function DonationDetail({ id }: TDonationDetailProps) {
   const { mutate: createComment, isLoading: isCreatingComment } =
     trpc.comments.createComment.useMutation({
       onMutate: async (values) => {
-        await utils.comments.getComments.cancel();
+        if (!values.parentId && !values.referenceId) {
+          await utils.comments.getComments.cancel();
 
-        const previousComments = utils.comments.getComments.getData({
-          causeId: id,
-          limit: 9,
-        });
-
-        if (previousComments) {
-          //@ts-ignore
-          utils.comments.getComments.setInfiniteData({ causeId: id }, (old) => {
-            if (old === undefined) {
-              return {
-                pages: [],
-                pageParams: undefined,
-              };
-            }
-
-            const withNewData = old.pages.map((page) => ({
-              ...page,
-              comments: [values, ...page.comments],
-            }));
-
-            return {
-              ...old,
-              pages: withNewData,
-            };
+          const previousComments = utils.comments.getComments.getData({
+            causeId: id,
+            limit: 9,
           });
-        }
 
-        return { previousComments };
+          if (previousComments) {
+            utils.comments.getComments.setInfiniteData(
+              { causeId: id },
+              //@ts-ignore
+              (old) => {
+                if (old === undefined) {
+                  return {
+                    pages: [],
+                    pageParams: undefined,
+                  };
+                }
+
+                const withNewData = old.pages.map((page) => ({
+                  ...page,
+                  comments: [values, ...page.comments],
+                }));
+
+                return {
+                  ...old,
+                  pages: withNewData,
+                };
+              }
+            );
+          }
+
+          return { previousComments };
+        } else if (values.parentId || values.referenceId) {
+          await utils.comments.getReplies.cancel();
+          const previousReplies = utils.comments.getReplies.getData({
+            causeId: id,
+            parentId: values.parentId ? values.parentId : undefined,
+            limit: 9,
+          });
+          if (previousReplies) {
+            utils.comments.getReplies.setInfiniteData(
+              {
+                causeId: id,
+                parentId: values.parentId ? values.parentId : undefined,
+              },
+              //@ts-ignore
+              (old) => {
+                if (old === undefined) {
+                  return {
+                    pages: [],
+                    pageParams: undefined,
+                  };
+                }
+
+                const withNewData = old.pages.map((page) => ({
+                  ...page,
+                  replies: [values, ...page.replies],
+                }));
+
+                return {
+                  ...old,
+                  pages: withNewData,
+                };
+              }
+            );
+          }
+
+          return { previousReplies };
+        }
       },
-      onError: (err, _, context) => {
-        utils.comments.getComments.setData(
-          { causeId: id },
-          context?.previousComments
-        );
+      onError: (err, values, context) => {
+        if (!values.parentId && !values.referenceId) {
+          utils.comments.getComments.setInfiniteData(
+            { causeId: id },
+            //@ts-ignore
+            context?.previousComments
+          );
+        } else if (values.parentId || values.referenceId) {
+          utils.comments.getReplies.setInfiniteData(
+            {
+              causeId: id,
+              parentId: values.parentId ? values.parentId : undefined,
+            },
+            //@ts-ignore
+            context?.previousReplies
+          );
+        }
         toast.error(err.message);
       },
-      onSettled: () => {
-        utils.comments.getComments.refetch();
+      onSettled: (values) => {
+        if (!values?.parentId && !values?.referenceId) {
+          utils.comments.getComments.invalidate();
+        } else if (values?.parentId || values?.referenceId) {
+          utils.comments.getReplies.invalidate();
+        }
       },
     });
 
@@ -703,7 +800,7 @@ function DonationDetail({ id }: TDonationDetailProps) {
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 lg:overflow-y-auto lg:scrollbar-thin lg:scrollbar-track-transparent lg:scrollbar-thumb-primary">
+      <div className="flex flex-col gap-3 lg:overflow-y-auto lg:scrollbar-thin lg:scrollbar-track-transparent lg:scrollbar-thumb-primary relative">
         {!isLoadingComments ? (
           <h5 className="font-semibold text-lg lg:text-2xl">Comments</h5>
         ) : (
@@ -720,7 +817,9 @@ function DonationDetail({ id }: TDonationDetailProps) {
                 form={form}
               />
             ))
-          ) : null
+          ) : (
+            <p className="text-muted-foreground">Be the first to comment!</p>
+          )
         ) : (
           <div className="flex flex-col gap-3">
             {[1, 2, 3].map((v) => (
@@ -730,7 +829,7 @@ function DonationDetail({ id }: TDonationDetailProps) {
         )}
 
         {!isLoadingComments ? (
-          <div className="relative">
+          <>
             {!isSignedIn ? (
               <div className="absolute z-10 inset-0 m-auto bg-background/50 flex justify-center items-center">
                 <SignInButton mode="modal" forceRedirectUrl={pathname}>
@@ -774,7 +873,7 @@ function DonationDetail({ id }: TDonationDetailProps) {
                         Post
                       </Button>
                     ) : null}
-                    <div className="relative">
+                    <div>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -803,7 +902,7 @@ function DonationDetail({ id }: TDonationDetailProps) {
                 </div>
               </form>
             </Form>
-          </div>
+          </>
         ) : (
           <div className="flex flex-col lg:flex-row gap-1.5">
             <Skeleton className="h-10 w-full" />

@@ -9,7 +9,6 @@ import { filteredUser } from "@/lib/utils";
 
 export const getComments = async ({
   causeId,
-  parentId,
   cursor,
   limit,
   skip,
@@ -17,9 +16,6 @@ export const getComments = async ({
   const { userId } = auth();
 
   const basicQuery = { causeId: causeId ? causeId : undefined };
-  const query = !parentId
-    ? { ...basicQuery, parentId: null }
-    : { AND: { ...basicQuery, parentId, NOT: { parentId: null } } };
 
   const c = await db.comment.findMany({
     take: limit! + 1,
@@ -35,7 +31,7 @@ export const getComments = async ({
       userId: true,
       content: true,
       createdAt: true,
-      parent: parentId ? true : false,
+      parentId: true,
     },
     orderBy: [
       { createdAt: "desc" },
@@ -43,7 +39,7 @@ export const getComments = async ({
         id: "asc",
       },
     ],
-    where: query,
+    where: { ...basicQuery, parentId: null, referenceId: null },
   });
 
   let nextCursor: typeof cursor | undefined = undefined;
@@ -85,6 +81,92 @@ export const getComments = async ({
 
   return {
     comments: commentsWithUsers.map((comment) => {
+      return { ...comment, isLiked: false };
+    }),
+    nextCursor,
+  };
+};
+
+export const getReplies = async ({
+  causeId,
+  parentId,
+  cursor,
+  limit,
+  skip,
+}: z.infer<typeof getCommentsParams>) => {
+  const { userId } = auth();
+
+  const basicQuery = {
+    causeId: causeId ? causeId : undefined,
+    parentId: parentId ? parentId : null,
+  };
+
+  const r = await db.comment.findMany({
+    take: limit! + 1,
+    skip: skip,
+    select: {
+      id: true,
+      _count: {
+        select: {
+          likes: true,
+          replies: true,
+        },
+      },
+      userId: true,
+      content: true,
+      createdAt: true,
+      referenceId: true,
+    },
+    orderBy: [
+      { likes: { _count: "desc" } },
+      {
+        id: "asc",
+      },
+    ],
+    where: {
+      AND: [basicQuery, { parentId: { not: null } }],
+    },
+  });
+
+  let nextCursor: typeof cursor | undefined = undefined;
+  if (r.length > limit!) {
+    const nextItem = r.pop();
+    nextCursor = nextItem?.id!;
+  }
+
+  const userIds = await clerkClient.users.getUserList({
+    userId: r.map((a) => a.userId),
+  });
+
+  const repliesWithUsers = r.map((comment) => {
+    const user = userIds.data.find((user) => user.id === comment.userId);
+    if (!user) return { ...comment, user: null };
+
+    return { ...comment, user: filteredUser(user) };
+  });
+
+  if (userId) {
+    const likes = await db.like.findMany({
+      where: {
+        userId: userId,
+        commentId: {
+          in: repliesWithUsers.map((comment) => comment.id),
+        },
+      },
+    });
+    return {
+      replies: repliesWithUsers.map((comment) => {
+        return {
+          ...comment,
+          isLiked: likes.some((like) => like.commentId === comment.id),
+        };
+      }),
+      nextCursor,
+    };
+  }
+
+  return {
+    replies: repliesWithUsers.map((comment) => {
       return { ...comment, isLiked: false };
     }),
     nextCursor,

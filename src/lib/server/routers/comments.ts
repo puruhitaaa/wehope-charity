@@ -1,4 +1,8 @@
-import { getCommentById, getComments } from "@/lib/api/comments/queries";
+import {
+  getCommentById,
+  getComments,
+  getReplies,
+} from "@/lib/api/comments/queries";
 import { publicProcedure, protectedProcedure, router } from "@/lib/server/trpc";
 import { clientCommentParams, commentIdSchema } from "@/lib/db/schema/comments";
 import { createComment, deleteComment } from "@/lib/api/comments/mutations";
@@ -17,10 +21,24 @@ export const commentsRouter = router({
   getComments: publicProcedure
     .input(getCommentsParams)
     .query(async ({ input }) => {
+      const { skip, causeId, cursor } = input;
+
+      const limit = input.limit ?? 9;
+      return getComments({ skip, causeId, cursor, limit });
+    }),
+  getReplies: publicProcedure
+    .input(getCommentsParams)
+    .query(async ({ input }) => {
       const { skip, causeId, cursor, parentId } = input;
 
       const limit = input.limit ?? 9;
-      return getComments({ skip, causeId, parentId, cursor, limit });
+      return getReplies({
+        skip,
+        causeId,
+        parentId,
+        cursor,
+        limit,
+      });
     }),
   getCommentById: publicProcedure
     .input(commentIdSchema)

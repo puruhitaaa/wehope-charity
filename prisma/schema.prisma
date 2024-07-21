@@ -117,17 +117,20 @@ model Like {
 }
 
 model Comment {
-  id        String    @id @default(cuid())
-  content   String
-  userId    String
-  causeId   String?
-  cause     Cause?    @relation(fields: [causeId], references: [id], onDelete: Cascade)
-  likes     Like[]
-  parentId  String?
-  parent    Comment?  @relation("ReplyToComment", fields: [parentId], references: [id])
-  replies   Comment[] @relation("ReplyToComment")
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id          String    @id @default(cuid())
+  content     String
+  userId      String
+  causeId     String?
+  cause       Cause?    @relation(fields: [causeId], references: [id], onDelete: Cascade)
+  likes       Like[]
+  referenceId String?
+  reference   Comment?  @relation("ReplyToReply", fields: [referenceId], references: [id], onDelete: Cascade)
+  references  Comment[] @relation("ReplyToReply")
+  parentId    String?
+  parent      Comment?  @relation("ReplyToComment", fields: [parentId], references: [id], onDelete: Cascade)
+  replies     Comment[] @relation("ReplyToComment")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([createdAt])
 }
