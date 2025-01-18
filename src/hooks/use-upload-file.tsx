@@ -1,15 +1,15 @@
 import * as React from "react";
-import type { UploadedFile } from "@/types/uploadthing";
 import { toast } from "sonner";
-import type { UploadFilesOptions } from "uploadthing/types";
+import type { AnyFileRoute, UploadFilesOptions } from "uploadthing/types";
 
 import { getErrorMessage } from "@/lib/handle-error";
 import { uploadFiles } from "@/lib/uploadthing";
 import { type OurFileRouter } from "@/app/api/uploadthing/core";
+import { UploadedFile } from "@/types/uploadthing";
 
-interface UseUploadFileProps
+interface UseUploadFileOptions<TFileRoute extends AnyFileRoute>
   extends Pick<
-    UploadFilesOptions<OurFileRouter, keyof OurFileRouter>,
+    UploadFilesOptions<TFileRoute>,
     "headers" | "onUploadBegin" | "onUploadProgress" | "skipPolling"
   > {
   defaultUploadedFiles?: UploadedFile[];
@@ -17,7 +17,10 @@ interface UseUploadFileProps
 
 export function useUploadFile(
   endpoint: keyof OurFileRouter,
-  { defaultUploadedFiles = [], ...props }: UseUploadFileProps = {}
+  {
+    defaultUploadedFiles = [],
+    ...props
+  }: UseUploadFileOptions<OurFileRouter[keyof OurFileRouter]> = {}
 ) {
   const [uploadedFiles, setUploadedFiles] =
     React.useState<UploadedFile[]>(defaultUploadedFiles);
@@ -26,17 +29,23 @@ export function useUploadFile(
   );
   const [isUploading, setIsUploading] = React.useState(false);
 
-  async function uploadThings(files: File[]) {
+  async function onUpload(files: File[]) {
     setIsUploading(true);
     try {
       const res = await uploadFiles(endpoint, {
         ...props,
         files,
-        onUploadProgress: ({ file, progress }) => {
+        onUploadProgress: ({
+          file,
+          progress,
+        }: {
+          file: File;
+          progress: number;
+        }) => {
           setProgresses((prev) => {
             return {
               ...prev,
-              [file]: progress,
+              [file.name]: progress,
             };
           });
         },
@@ -52,9 +61,9 @@ export function useUploadFile(
   }
 
   return {
+    onUpload,
     uploadedFiles,
     progresses,
-    uploadFiles: uploadThings,
     isUploading,
   };
 }

@@ -89,7 +89,7 @@ const CauseForm = ({
     toast.success(`Cause ${action}d!`);
   };
 
-  const { uploadFiles, progresses, uploadedFiles, isUploading } = useUploadFile(
+  const { onUpload, progresses, uploadedFiles, isUploading } = useUploadFile(
     "imageUploader",
     { defaultUploadedFiles: [] }
   );
@@ -133,7 +133,7 @@ const CauseForm = ({
         return;
       }
 
-      toast.promise(uploadFiles(values.images), {
+      toast.promise(onUpload(values.images), {
         loading: "Uploading new images...",
         success: () => {
           return "New images uploaded";
@@ -145,7 +145,7 @@ const CauseForm = ({
     } else {
       if (!values.images) return;
 
-      toast.promise(uploadFiles(values.images), {
+      toast.promise(onUpload(values.images), {
         loading: "Uploading images...",
         success: () => {
           return "Images uploaded";
@@ -303,7 +303,7 @@ const CauseForm = ({
                     maxSize={4 * 1024 * 1024}
                     progresses={progresses}
                     // pass the onUpload function here for direct upload
-                    // onUpload={uploadFiles}
+                    // onUpload={onUpload}
                     disabled={isUploading}
                   />
                 </FormControl>
