@@ -10,6 +10,12 @@ const nextConfig = {
       },
       {
         protocol: "https",
+        hostname: "5qaj29xq4i.ufs.sh",
+        port: "",
+        // pathname: '/account123/**',
+      },
+      {
+        protocol: "https",
         hostname: "img.clerk.com",
         port: "",
       },
